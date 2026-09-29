@@ -1,20 +1,5 @@
 import { Section } from "@/components/section";
-import { prePrimary, primary } from "@/content/school";
-
-const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
-
-const roman = (className: string) =>
-  ROMAN[Number(className.replace(/\D/g, "")) - 1] ?? className;
-
-/**
- * "Primary" alone is read as Class 1 to 5 in some schools and Class 1 to 8 in
- * others, so the span is named alongside it, in the Roman numerals the school
- * uses on its own signage. Derived from the class list so it stays true to the
- * classes the school runs.
- */
-const primaryRange = `${roman(primary.classes[0])}–${roman(
-  primary.classes[primary.classes.length - 1],
-)}`;
+import { prePrimary, primary, primaryLabel } from "@/content/school";
 
 /**
  * Primary closes the same progression as the pre-primary stages rather than
@@ -24,7 +9,7 @@ const primaryRange = `${roman(primary.classes[0])}–${roman(
 const stages = [
   ...prePrimary,
   {
-    name: `Primary (${primaryRange})`,
+    name: primaryLabel,
     colour: "var(--color-class-primary)",
     textColour: "var(--color-navy-deep)",
     body: primary.body,

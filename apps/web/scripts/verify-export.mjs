@@ -10,6 +10,7 @@ import {
   moments,
   prePrimary,
   primary,
+  primaryLabel,
   school,
   social,
   techniques,
@@ -99,9 +100,11 @@ for (const line of contact.addressLines) {
 for (const stage of prePrimary) {
   expect(`class "${stage.name}"`, text.includes(stage.name));
 }
-for (const name of primary.classes) {
-  expect(`class "${name}"`, text.includes(name));
-}
+// Primary is shown as one stage naming its span, not as five separate classes,
+// so the label that renders is what gets asserted.
+expect(`class "${primaryLabel}"`, text.includes(primaryLabel));
+expect("primary description", text.includes(primary.body));
+
 for (const area of learningAreas) {
   expect(`learning area "${area.title}"`, text.includes(area.title));
 }
@@ -190,7 +193,9 @@ for (const file of ["sitemap.xml", "robots.txt"]) {
 // Every rendition referenced by a srcset must exist, with a descriptor that
 // matches the file: a stale descriptor silently costs mobile users bandwidth.
 const referenced = new Set();
-for (const [, srcset] of rawIndex.matchAll(/srcSet="([^"]+)"|srcset="([^"]+)"/g)) {
+for (const [, srcset] of rawIndex.matchAll(
+  /srcSet="([^"]+)"|srcset="([^"]+)"/g,
+)) {
   for (const candidate of (srcset ?? "").split(",")) {
     const [url] = candidate.trim().split(/\s+/);
     if (url?.startsWith("/images/")) referenced.add(url);
@@ -213,4 +218,6 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`✓ export verified (${pages.length} page(s), ${referenced.size} renditions)`);
+console.log(
+  `✓ export verified (${pages.length} page(s), ${referenced.size} renditions)`,
+);

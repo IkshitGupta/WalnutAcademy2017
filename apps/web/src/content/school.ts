@@ -189,6 +189,22 @@ export const primary = {
   body: "Foundation subjects taught in English, with activity and practice in equal measure.",
 };
 
+const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+
+const roman = (className: string) =>
+  ROMAN[Number(className.replace(/\D/g, "")) - 1] ?? className;
+
+/**
+ * "Primary" alone is read as Class 1 to 5 in some schools and Class 1 to 8 in
+ * others, so the span is named alongside it, in the Roman numerals the school
+ * uses on its own signage. Derived from the class list so it stays true to the
+ * classes the school runs, and shared with the export check so the test asserts
+ * the label that actually renders.
+ */
+export const primaryLabel = `Primary (${roman(primary.classes[0])}–${roman(
+  primary.classes[primary.classes.length - 1],
+)})`;
+
 /** Prospectus, "Fun Learning Areas". */
 export const learningAreas = [
   {

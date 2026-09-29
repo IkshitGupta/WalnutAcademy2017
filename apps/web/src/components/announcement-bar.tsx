@@ -21,12 +21,14 @@ export function AnnouncementBar() {
             <span className="relative h-1.5 w-1.5 rounded-full bg-gold" />
           </span>
           <AdmissionNote buildSession={admissionSession()} />
-          <span className="sr-only">{". How to visit the school."}</span>
           <ArrowRight
             className="h-3.5 w-3.5 shrink-0 text-gold transition-transform group-hover:translate-x-0.5 sm:h-4 sm:w-4"
             aria-hidden
           />
         </p>
+        {/* Outside the paragraph, so the line a sighted visitor reads is also
+            the whole of that paragraph's text. */}
+        <span className="sr-only">{" How to visit the school."}</span>
       </a>
 
       {/* The same colours, in the same order, as the cap on the hero card. */}
