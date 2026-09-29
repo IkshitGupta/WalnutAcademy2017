@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+/*
+  Palette sampled from the school crest. Navy is the dominant non-white colour
+  in the mark; magenta carries over from the printed prospectus and is reserved
+  for pre-primary touches. Class colours are inherited from the prospectus,
+  which already colour-codes each programme.
+*/
+@theme {
+  --color-navy: #304890;
+  --color-navy-deep: #1e2f5c;
+  --color-navy-soft: #e8edf8;
+  --color-gold: #ffc93c;
+  --color-gold-soft: #fff3d4;
+  --color-whatsapp: #25d366;
+  /* No utility uses these two, so Tailwind drops them before the browser sees
+     them. They stay because they are the palette's record of two colours the
+     vector artwork draws as literals: the crest border and the prospectus
+     magenta on the bunting. `pnpm colours:check` reads them from here, so
+     removing them removes the reference the artwork is checked against. */
+  --color-brand-red: #c8102e;
+  --color-magenta: #d81b76;
+  --color-magenta-deep: #a01458;
+  --color-magenta-soft: #fce7f1;
+  --color-cream: #fffdf7;
+  --color-ink: #334155;
+  --color-ink-soft: #5b6b80;
+
+  --color-class-playgroup: #29a7e1;
+  --color-class-nursery: #ef6c33;
+  --color-class-kg: #e5388a;
+  --color-class-prep: #3ea845;
+  --color-class-primary: #304890;
+
+  /* Darkened variants, for text rather than decoration: the bar colours above
+     sit between 2.7:1 and 4:1 on white and cannot carry headings. */
+  --color-class-playgroup-text: #0b6fa4;
+  --color-class-nursery-text: #b8471a;
+  --color-class-kg-text: #b01661;
+  --color-class-prep-text: #24722c;
+
+  --font-heading: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    /* Holds an anchor target just clear of the pinned header: the announcement
+       bar, the nav row and the stripe. The header is taller from lg. This is
+       the only place the offset is set, so a target lands the same distance
+       below the header wherever it is on the page. */
+    scroll-padding-top: 7rem;
+  }
+
+  @media (min-width: 1024px) {
+    html {
+      scroll-padding-top: 8rem;
+    }
+  }
+
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+    color: var(--color-navy-deep);
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  :focus-visible {
+    /* Two-tone, so the indicator clears 3:1 on both the cream sections and the
+       navy bands: the dark outline reads on light, the white halo on dark. */
+    outline: 3px solid var(--color-navy-deep);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.95);
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  /* Neutral rather than navy. Darkening the photograph keeps the building's own
+     warm colour, where a coloured wash turned it grey-blue. Strongest across
+     the heading, easing off towards the foot of the frame. */
+  .hero-veil {
+    background-image: linear-gradient(
+      to bottom,
+      rgb(0 0 0 / 0.32) 0%,
+      rgb(0 0 0 / 0.46) 14%,
+      rgb(0 0 0 / 0.42) 58%,
+      rgb(0 0 0 / 0.16) 100%
+    );
+  }
+
+  /* Lifts the heading off the busier parts of the facade. */
+  .hero-title {
+    text-shadow: 0 2px 16px rgb(0 0 0 / 0.45);
+  }
+
+  /* A halo easing outwards from the announcement dot. Slow and low-contrast so
+     it reads as a sign of life rather than as something demanding attention.
+     The reduced-motion rule below stops it. */
+  .admission-dot {
+    animation: admission-halo 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+}
+
+@keyframes admission-halo {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  70%,
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

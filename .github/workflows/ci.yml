@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fails fast if the lockfile has been pinned to a private registry host,
+      # which would break installs here.
+      - run: node scripts/lockfile.mjs
+
+      # Fails fast if the vector artwork in packages/ui has drifted from the
+      # palette. Neither script needs dependencies installed.
+      - run: node scripts/brand-colours.mjs
+
+      - uses: pnpm/action-setup@v4
+
+      # Self-hosted runners inside a corporate network cannot reach the default
+      # registry. Set a repository variable named NPM_REGISTRY to point pnpm at
+      # an internal mirror; GitHub-hosted runners need nothing and skip this.
+      - name: Use a private registry when one is configured
+        if: ${{ vars.NPM_REGISTRY != '' }}
+        run: pnpm config set registry "${{ vars.NPM_REGISTRY }}"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint
+
+      - run: pnpm typecheck
+
+      # Builds the static export, then checks the generated HTML still carries
+      # the contact details, every class, and no board claim.
+      - run: pnpm test
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - run: pnpm --filter @walnut/web exec playwright install --with-deps chromium
+
+      # Browser smoke tests against the built export: the mobile menu, the
+      # persistent call action, image rendering and anchor navigation.
+      - run: pnpm test:e2e
+
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: apps/web/out
+          retention-days: 7

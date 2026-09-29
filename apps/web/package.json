@@ -1,0 +1,34 @@
+{
+  "name": "@walnut/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/optimise-images.mjs && next dev",
+    "build": "node scripts/optimise-images.mjs && next build",
+    "images": "node scripts/optimise-images.mjs",
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-export.mjs",
+    "test:e2e": "playwright test",
+    "serve": "node scripts/serve-export.mjs"
+  },
+  "dependencies": {
+    "@walnut/ui": "workspace:*",
+    "lucide-react": "^1.47.0",
+    "next": "16.3.5",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.5",
+    "sharp": "^0.33.5",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
