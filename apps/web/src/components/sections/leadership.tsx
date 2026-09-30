@@ -1,6 +1,9 @@
 import { Section } from "@/components/section";
-import { groupHeading } from "@/components/ui";
 import { leadership } from "@/content/school";
+
+/** Sits beneath the name, so it stays quieter than the name above it. */
+const roleLabel =
+  "font-heading text-sm font-bold tracking-[0.14em] text-ink-soft uppercase";
 
 export function Leadership() {
   return (
@@ -35,7 +38,7 @@ export function Leadership() {
               <h3 className="text-xl font-extrabold sm:text-2xl">
                 {person.name}
               </h3>
-              <p className={`${groupHeading} mt-1.5`}>{person.role}</p>
+              <p className={`${roleLabel} mt-1.5`}>{person.role}</p>
             </div>
 
             <div className="col-span-2 space-y-4 leading-relaxed text-ink lg:col-span-1">

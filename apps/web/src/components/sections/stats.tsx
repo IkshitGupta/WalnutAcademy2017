@@ -1,11 +1,16 @@
-import { CalendarDays, Layers, Presentation, UsersRound } from "lucide-react";
+import {
+  CalendarDays,
+  GraduationCap,
+  UserRoundPen,
+  UsersRound,
+} from "lucide-react";
 import { stats } from "@/content/school";
 
 const icons = {
   calendar: CalendarDays,
   students: UsersRound,
-  teachers: Presentation,
-  classes: Layers,
+  teachers: UserRoundPen,
+  classes: GraduationCap,
 } as const;
 
 /**

@@ -1,4 +1,5 @@
-import { MessageCircle, Phone } from "lucide-react";
+import { Phone } from "lucide-react";
+import { WhatsappIcon } from "@walnut/ui";
 import { contact } from "@/content/school";
 
 /**
@@ -23,7 +24,7 @@ export function MobileActionBar() {
         rel="noopener noreferrer"
         className="flex items-center justify-center gap-2 bg-whatsapp py-4 text-sm font-bold text-navy-deep"
       >
-        <MessageCircle className="h-5 w-5" aria-hidden />
+        <WhatsappIcon className="h-5 w-5" />
         WhatsApp
       </a>
     </div>

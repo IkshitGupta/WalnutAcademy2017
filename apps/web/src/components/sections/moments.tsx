@@ -1,8 +1,10 @@
+import { Bunting } from "@walnut/ui";
 import { Section } from "@/components/section";
 import { moments } from "@/content/school";
 
 /**
- * Runs the full width rather than sitting in the reading column: the
+ * The photographs name the days themselves, so nothing lists them twice. The
+ * wall runs the full width rather than sitting in the reading column: the
  * photographs carry this section, and nothing else on the page breaks out of
  * that column, which is most of what makes it read differently.
  */
@@ -10,12 +12,16 @@ export function Moments() {
   return (
     <Section
       id="moments"
-      tone="white"
+      tone="magenta"
       eyebrow="Through the year"
       title="What a year here looks like"
-      intro="Festivals, theme days and competitions, photographed as they happened."
+      intro="Festivals, national days, competitions and a few of the school’s own, all of them reasons for children to take part rather than watch."
       bleed
     >
+      <div className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
+        <Bunting className="h-14 w-full sm:h-16" />
+      </div>
+
       <ul className="grid grid-cols-2 gap-1 md:grid-cols-5">
         {moments.map((moment) => (
           <li key={moment.src} className="relative">

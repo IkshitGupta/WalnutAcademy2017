@@ -91,6 +91,16 @@ creates a containing block, which scoped the `fixed` overlay to the 80px header
 instead of the viewport. The assertion on the overlay's height catches that
 class of regression.
 
+The header height test exists for another. The header compacts once the page
+moves, which shortens it, and because it sits in the flow the browser then
+corrects the scroll position to hold the content under it still. That correction
+is around 16px, so a single threshold at 8px put the scroll position back on the
+far side of it and the header changed height for as long as the page was left
+alone. `COMPACT_BELOW` and `EXPAND_ABOVE` in `site-header.tsx` are far enough
+apart to absorb the correction, and the test stops at several offsets either
+side of both, because the offsets that provoke it differ between the dev server
+and the export.
+
 ### A note on the lockfile
 
 If you install packages from behind a corporate npm mirror, pnpm records an
@@ -113,14 +123,13 @@ such a mirror.
 
 Almost everything the site says lives in
 [`apps/web/src/content/school.ts`](apps/web/src/content/school.ts): contact
-details, timings, class descriptions, learning areas, facilities, celebrations
-and the leadership messages. Editing that file is enough for most changes; the
-components read from it.
+details, timings, class descriptions, learning areas, facilities, the
+photographs and the leadership messages. Editing that file is enough for most
+changes; the components read from it.
 
 Facilities carry a `group`, rendered in the order the groups first appear, so a
 new entry needs a `group` and is best placed beside its siblings. The grouping
-is a reading aid only; the prospectus lists them flat. Celebrations are a plain
-list of names, shown as chips in the order given.
+is a reading aid only; the prospectus lists them flat.
 
 Learning areas and facilities also carry an `icon`, naming one of the icons
 mapped at the top of `learning-areas.tsx` and `features.tsx`. A new entry needs
@@ -242,10 +251,11 @@ separate, text-free simplification for the favicon.
   in their own words.
 - **Confirm the student and teacher counts.** Written as "250+" and "12+" so
   small changes do not make the page wrong.
-- **Confirm the celebrations list.** Holi, Mango Day, Shape Day, Earth Day,
-  Rhyme Recitation and Pool Party were taken from the photographs, which show
-  each happened once rather than that it happens every year. Green Day was left
-  out as an instance of Colour Day.
+- **Confirm the photographed days are yearly ones.** The section is headed
+  "What a year here looks like", so it reads as a normal year rather than as ten
+  particular occasions. Each caption is only what the photograph shows, which is
+  safe on its own, but the heading is worth checking against a day the school
+  marked once and does not intend to repeat.
 - **Correct the third-party directory listings.** Justdial and CareerSocho
   currently describe the school as CBSE with science labs, an auditorium and
   sports facilities. None of that is accurate, and those listings presently rank

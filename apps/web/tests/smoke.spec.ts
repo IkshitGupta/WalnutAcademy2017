@@ -83,6 +83,35 @@ test("the announcement and the header stay pinned together", async ({
   expect((await header.boundingBox())?.y).toBeLessThanOrEqual(1);
 });
 
+// The header compacts as the page moves, which shortens it, and the browser
+// then corrects the scroll position to hold the content under it still. With a
+// single threshold that correction landed back on the other side of it, and the
+// header changed height for as long as the page was left alone. Stopping just
+// either side of a threshold is where that shows, so several offsets are
+// checked rather than one.
+test("the header settles at one height once scrolling stops", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  for (const offset of [4, 8, 26, 74]) {
+    await page.evaluate(() => window.scrollTo(0, 600));
+    await page.waitForTimeout(150);
+    await page.evaluate((y) => window.scrollTo(0, y), offset);
+    await page.waitForTimeout(350);
+
+    const header = page.locator("header");
+    const settled = (await header.boundingBox())?.height;
+    for (let i = 0; i < 6; i++) {
+      await page.waitForTimeout(70);
+      expect(
+        (await header.boundingBox())?.height,
+        `header height changed after stopping at ${offset}px`,
+      ).toBe(settled);
+    }
+  }
+});
+
 // Every photograph is of children, so a missing description is a reader losing
 // the section entirely rather than losing a decoration.
 test("the gallery shows every photograph, each described", async ({ page }) => {

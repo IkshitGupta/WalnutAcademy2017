@@ -7,12 +7,23 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Menu, MessageCircle, Phone, X } from "lucide-react";
-import { Crest } from "@walnut/ui";
+import { Menu, Phone, X } from "lucide-react";
+import { Crest, WhatsappIcon } from "@walnut/ui";
 import { SocialIcon } from "@/components/social-icon";
 import { contact, navLinks, school, social } from "@/content/school";
 
 const DESKTOP = "(min-width: 1024px)";
+
+/**
+ * Compacting shortens the header, and because it sits in the flow, the browser
+ * corrects the scroll position to keep the content under it still. That
+ * correction is larger than a single threshold's margin, so one threshold puts
+ * the scroll position back on the other side of it and the header changes
+ * height for as long as the page is left alone. Compacting and expanding at
+ * different offsets keeps the correction well inside one state.
+ */
+const COMPACT_BELOW = 72;
+const EXPAND_ABOVE = 24;
 
 export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -26,7 +37,10 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
   const close = useCallback(() => setOpen(false), []);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
+    const onScroll = () =>
+      setScrolled((was) =>
+        was ? window.scrollY > EXPAND_ABOVE : window.scrollY > COMPACT_BELOW,
+      );
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -195,7 +209,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
             aria-label="Message the school on WhatsApp"
             className="ml-2 hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-whatsapp text-navy-deep transition-transform hover:scale-[1.05] lg:inline-flex"
           >
-            <MessageCircle className="h-5 w-5" aria-hidden />
+            <WhatsappIcon className="h-5 w-5" />
           </a>
 
           <a

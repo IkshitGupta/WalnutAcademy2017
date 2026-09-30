@@ -14,7 +14,7 @@ export const eyebrow =
 
 /** Heading for a group of items within a section. */
 export const groupHeading =
-  "font-heading text-sm font-bold tracking-[0.14em] text-ink-soft uppercase";
+  "font-heading text-sm font-bold tracking-[0.14em] text-navy-deep uppercase";
 
 /** Preserves source order of both the groups and the items inside them. */
 export function groupBy<T>(items: readonly T[], key: (item: T) => string) {

@@ -5,8 +5,8 @@ import {
   Bus,
   Cctv,
   Droplets,
-  Laptop,
   MessagesSquare,
+  Monitor,
   Projector,
   ShieldCheck,
   Shovel,
@@ -28,7 +28,7 @@ const icons = {
   staff: UserCheck,
   audioVisual: Projector,
   library: BookMarked,
-  computer: Laptop,
+  computer: Monitor,
   trips: Backpack,
   sandPit: Shovel,
   splash: Waves,
@@ -45,8 +45,11 @@ export function Features() {
       intro="The practical side of a school day: how children are kept safe, what they learn with, where they play, and how we keep in touch with home."
     >
       <div className="space-y-8">
-        {groupBy(features, (feature) => feature.group).map((group) => (
-          <div key={group.name}>
+        {groupBy(features, (feature) => feature.group).map((group, index) => (
+          <div
+            key={group.name}
+            className={index > 0 ? "border-t border-navy/10 pt-8" : undefined}
+          >
             <h3 className={groupHeading}>{group.name}</h3>
             <ul className="mt-4 grid gap-x-10 gap-y-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-x-12">
               {group.items.map((feature) => {

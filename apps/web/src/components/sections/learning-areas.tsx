@@ -1,13 +1,13 @@
 import {
+  Amphora,
   Blocks,
   Calculator,
   Drama,
-  Footprints,
   Monitor,
   Music,
   Palette,
-  Shapes,
   Sprout,
+  Volleyball,
 } from "lucide-react";
 import { Mascot } from "@walnut/ui";
 import { Section } from "@/components/section";
@@ -19,10 +19,10 @@ const icons = {
   computer: Monitor,
   blocks: Blocks,
   art: Palette,
-  clay: Shapes,
+  clay: Amphora,
   drama: Drama,
   music: Music,
-  play: Footprints,
+  play: Volleyball,
 } as const;
 
 export function LearningAreas() {

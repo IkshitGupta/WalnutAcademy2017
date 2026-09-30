@@ -1,11 +1,5 @@
-import {
-  Clock,
-  Mail,
-  MapPin,
-  MessageCircle,
-  Navigation,
-  Phone,
-} from "lucide-react";
+import { Clock, Mail, MapPin, Navigation, Phone } from "lucide-react";
+import { WhatsappIcon } from "@walnut/ui";
 import { Section } from "@/components/section";
 import { AdmissionNote } from "@/components/admission-note";
 import { panelOnNavy } from "@/components/ui";
@@ -53,7 +47,7 @@ export function Visit() {
             rel="noopener noreferrer"
             className="mt-5 inline-flex items-center justify-center gap-2 rounded-full bg-whatsapp px-6 py-3 font-heading font-bold text-navy-deep transition-transform hover:scale-[1.02]"
           >
-            <MessageCircle className="h-5 w-5" aria-hidden />
+            <WhatsappIcon className="h-5 w-5" />
             Message on WhatsApp
           </a>
 

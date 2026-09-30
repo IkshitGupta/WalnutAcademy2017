@@ -3,7 +3,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   admissions,
-  celebrations,
   contact,
   features,
   learningAreas,
@@ -113,9 +112,6 @@ for (const technique of techniques) {
 }
 for (const feature of features) {
   expect(`feature "${feature.label}"`, text.includes(feature.label));
-}
-for (const event of celebrations) {
-  expect(`celebration "${event.name}"`, text.includes(event.name));
 }
 
 for (const moment of moments) {

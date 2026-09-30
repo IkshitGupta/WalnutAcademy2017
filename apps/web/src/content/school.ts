@@ -151,8 +151,8 @@ export const techniques = [
 ];
 
 /**
- * `colour` is decorative (the card's top bar); `textColour` is a darkened
- * variant that clears WCAG AA against white for the heading.
+ * `colour` is decorative; `textColour` is a darkened variant that clears WCAG
+ * AA against white for the heading.
  */
 export const prePrimary = [
   {
@@ -297,26 +297,6 @@ export const features = [
     group: "Play and family",
   },
 ] as const;
-
-/** The prospectus list, plus the days the photographs show. */
-export const celebrations = [
-  { name: "Holi" },
-  { name: "Raksha Bandhan" },
-  { name: "Janmashtami" },
-  { name: "Dussehra" },
-  { name: "Diwali" },
-  { name: "Christmas" },
-  { name: "Independence Day" },
-  { name: "Children’s Day" },
-  { name: "Grandparents Day" },
-  { name: "Theme Day" },
-  { name: "Colour Day" },
-  { name: "Mango Day" },
-  { name: "Shape Day" },
-  { name: "Earth Day" },
-  { name: "Rhyme Recitation" },
-  { name: "Pool Party" },
-];
 
 /**
  * Draft messages, written from confirmed facts only, for Dr. Rekha Gupta and

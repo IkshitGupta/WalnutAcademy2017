@@ -6,8 +6,8 @@ type BuntingProps = {
 const flags = ["#d81b76", "#ffc93c", "#304890", "#3ea845", "#ef6c33"];
 
 /**
- * Original decoration for the celebrations section, which has no photograph of
- * its own. Purely presentational, so it is hidden from assistive technology.
+ * Original decoration for the section on the school's year. Purely
+ * presentational, so it is hidden from assistive technology.
  */
 export function Bunting({ className }: BuntingProps) {
   const count = 15;

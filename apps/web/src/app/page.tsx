@@ -6,7 +6,6 @@ import { Techniques } from "@/components/sections/techniques";
 import { Leadership } from "@/components/sections/leadership";
 import { LearningAreas } from "@/components/sections/learning-areas";
 import { Features } from "@/components/sections/features";
-import { Celebrations } from "@/components/sections/celebrations";
 import { Moments } from "@/components/sections/moments";
 import { Visit } from "@/components/sections/visit";
 
@@ -28,7 +27,6 @@ export default function HomePage() {
       <Leadership />
       <LearningAreas />
       <Features />
-      <Celebrations />
       <Moments />
       <Visit />
     </>
