@@ -35,6 +35,8 @@ type SectionProps = {
   intro?: string;
   tone?: keyof typeof tones;
   density?: keyof typeof densities;
+  /** A page whose main heading this is needs `h1`; a band within one does not. */
+  titleAs?: "h1" | "h2";
   /** Lets the children run the full width, outside the reading column. */
   bleed?: boolean;
   /**
@@ -59,6 +61,7 @@ export function Section({
   intro,
   tone = "cream",
   density = "default",
+  titleAs: Heading = "h2",
   bleed = false,
   split = false,
   aside,
@@ -74,13 +77,13 @@ export function Section({
         <p className={`${eyebrowClass} ${eyebrowTone[tone]}`}>{eyebrow}</p>
       ) : null}
       {title ? (
-        <h2
+        <Heading
           className={`${eyebrow ? "mt-3" : ""} text-3xl font-extrabold sm:text-4xl ${
             onNavy ? "text-white" : ""
           }`}
         >
           {title}
-        </h2>
+        </Heading>
       ) : null}
       {intro ? (
         <p

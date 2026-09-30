@@ -31,7 +31,7 @@ call it.
 │       ├── scripts/         build-time image pipeline, export check, static server
 │       ├── tests/           Playwright smoke tests
 │       └── src/
-│           ├── app/         layout, page, metadata, robots, sitemap
+│           ├── app/         layout, pages, metadata, robots, sitemap
 │           ├── components/  header, footer, action bar, page sections
 │           └── content/     all copy and facts, in one file
 └── packages/
@@ -77,9 +77,10 @@ Three layers, all run in CI:
   decision rather than an accident.
 - **`pnpm test`** builds the export and asserts the generated HTML still
   carries the contact details, every class and learning area, the recognition
-  wording, valid JSON-LD matching `school.ts`, and every `srcset` rendition.
-  `<script>` and `<style>` are stripped first, so content embedded in Next's RSC
-  payload cannot mask something that no longer renders.
+  wording, valid JSON-LD matching `school.ts`, every `srcset` rendition, and
+  that the careers page exports with both ways to apply, one address and no
+  `JobPosting` markup. `<script>` and `<style>` are stripped first, so content
+  embedded in Next's RSC payload cannot mask something that no longer renders.
 - **`pnpm test:e2e`** runs Playwright against the built export rather than the
   dev server, on a mobile and a desktop viewport. Covers the areas that static
   checks cannot reach: the mobile menu (full-viewport overlay, focus handling,
@@ -124,8 +125,8 @@ such a mirror.
 Almost everything the site says lives in
 [`apps/web/src/content/school.ts`](apps/web/src/content/school.ts): contact
 details, timings, class descriptions, learning areas, facilities, the
-photographs and the leadership messages. Editing that file is enough for most
-changes; the components read from it.
+photographs, the careers copy and the leadership messages. Editing that file is
+enough for most changes; the components read from it.
 
 Facilities carry a `group`, rendered in the order the groups first appear, so a
 new entry needs a `group` and is best placed beside its siblings. The grouping
@@ -202,6 +203,85 @@ this repository is public: committing them is not the step that publishes them.
 A photograph that has not been published elsewhere should not be added here
 without asking the school first.
 
+### The careers page
+
+`/careers` invites teaching applications. It is a second route rather than a
+band on the home page: the home page is long already and addressed to parents,
+and a page of its own earns a title and description that can be found by
+someone searching for teaching work in Mansarovar. It is reached from the
+footer and the mobile menu, deliberately not from the desktop top navigation,
+which stays six parent-facing items.
+
+### Advertising an open post
+
+`vacancy` in `school.ts` carries a switch. With `active: true` the page leads
+with the post and emits `JobPosting` structured data, which is what makes a
+listing eligible for the jobs results at the top of a Google search. With
+`active: false` the page returns to a standing invitation and the markup goes
+with it. Applying works the same in both states.
+
+Two rules govern this, and both are enforced rather than trusted.
+
+**A filled post must stop being advertised.** `pnpm test` fails if the markup
+and the visible block disagree, so neither can be left behind. The more
+important guard is `validThrough`: an export is built once and then left alone,
+so if nobody rebuilds after the post is filled, that date is the only thing
+telling search engines the listing has closed. The export check refuses to
+publish a posting whose closing date has already passed.
+
+**Nothing in a posting may be guessed.** There is no salary and no list of
+requirements because the school has not fixed them, and a `JobPosting` is a
+factual claim rather than an advertisement. If a salary is ever agreed, adding
+it improves how the listing surfaces.
+
+A gender requirement was asked for and deliberately left out. Google's job
+posting policies disallow discriminatory criteria, so including one risks the
+listing being rejected, which defeats the reason for the markup. India's Equal
+Remuneration Act also restricts conditions of that kind in recruitment
+advertising. Screening at the conversation stage avoids both.
+
+**Applications arrive by email and WhatsApp, weighted equally.** The CV decided
+this. The site exports to static files with no server, so every form route
+either charges for file upload, puts a Google sign-in in front of it, or needs a
+backend to store it. Email takes an attachment for free, WhatsApp takes
+documents just as well, and both land where the school already looks. The
+consistency a form would give is recovered by stating on the page what to
+include. Should the volume ever justify a form, the copy around it does not have
+to change.
+
+Two details are not decoration. The address is printed as selectable text as
+well as behind the `mailto:`, because that link opens nothing on a phone with no
+mail app configured. And both actions carry a prefilled subject or message, so
+an application is recognisable in an inbox. Both are asserted by `pnpm test`.
+
+**Only the school's address is published.** Forwarding on the school's Gmail
+delivers applications anywhere else they are wanted, without putting a second
+address on a public page where it is scraped and cannot be withdrawn. `pnpm
+test` fails if any address other than the school's appears on the page.
+
+**There is deliberately no `JobPosting` structured data while no post is open.**
+It describes a real, dated vacancy with an employment type and a closing date. A
+standing invitation is not that, and marking one up as though it were is treated
+as a violation rather than a technicality. Both states are asserted, so the
+markup cannot drift from the switch.
+
+Nothing on the page states a number of posts, pay, conditions or anything about
+the staff room, for the same reason as the rest of the site: the school has not
+confirmed it.
+
+### Linking between pages
+
+Every navigation link in the shared header, footer and announcement bar is
+written as `/#section`, not `#section`. A bare fragment resolves to nothing from
+`/careers`: it changes the address bar and scrolls to nowhere, leaving the
+visitor where they were. The header's scroll spy compares against the same
+absolute form. `navLinks` in `school.ts` is the one place these are written.
+
+The footer and announcement bar render on the server, so they cannot read the
+current route; absolute links avoid needing to. The browser tests assert that no
+link in the chrome begins with `#`, which is the invariant rather than a
+sample of it.
+
 ### The crest and mascot
 
 Both are vector, in `packages/ui`. The crest was redrawn from the printed
@@ -241,6 +321,14 @@ separate, text-free simplification for the favicon.
 
 ## Before going live
 
+- **Take the open post down when it is filled.** Set `vacancy.active` to false
+  in `apps/web/src/content/school.ts` and rebuild. Until then `validThrough`
+  carries it: search engines stop showing the listing after that date on their
+  own, so an unattended site does not keep advertising a post that is gone.
+- **Set up forwarding for applications.** The careers page publishes only the
+  school's address. Gmail's Settings, Forwarding and POP/IMAP, delivers a copy
+  of every application anywhere else it is wanted without a second address going
+  on a public page.
 - **Register a domain** and replace `siteUrl` in
   `apps/web/src/content/school.ts`. It is currently a placeholder.
 - **Confirm the exact recognition wording.** The site says "Rajasthan state

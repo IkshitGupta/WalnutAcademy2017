@@ -50,9 +50,9 @@ export const contact = {
   addressLines: [
     "175, Prajapati Vihar",
     "Patrakar Colony Road, Mansarovar",
+    "Behind Harshdeep Marriage Garden",
     "Jaipur, Rajasthan 302020",
   ],
-  landmark: "Behind Harshdeep Marriage Garden",
   mapsHref:
     "https://www.google.com/maps/dir/?api=1&destination=" +
     encodeURIComponent(
@@ -401,11 +401,69 @@ export const moments = [
   },
 ] as const;
 
+/**
+ * Absolute rather than bare fragments, so the same links work from a page that
+ * is not the homepage. The shared header, footer and announcement bar are
+ * rendered on every route.
+ */
 export const navLinks = [
-  { href: "#about", label: "About" },
-  { href: "#classes", label: "Classes" },
-  { href: "#learning", label: "Learning" },
-  { href: "#facilities", label: "Facilities" },
-  { href: "#moments", label: "Moments" },
-  { href: "#visit", label: "Visit Us" },
+  { href: "/#about", label: "About" },
+  { href: "/#classes", label: "Classes" },
+  { href: "/#learning", label: "Learning" },
+  { href: "/#facilities", label: "Facilities" },
+  { href: "/#moments", label: "Moments" },
+  { href: "/#visit", label: "Visit Us" },
 ];
+
+/**
+ * The switch for a real opening. Set `active` to false once the post is filled
+ * and the page returns to the standing invitation, taking the JobPosting
+ * markup with it.
+ *
+ * `validThrough` is the second catch and the more important one. An export is
+ * built once and then left alone, so if nobody rebuilds, that date is what
+ * tells search engines the posting has closed. Leaving a filled post
+ * advertised is a policy breach, not an oversight, so it is required here
+ * rather than optional.
+ *
+ * Nothing in here may be guessed. Anything the school has not settled is left
+ * out, which is why there is no salary and no list of requirements.
+ */
+export const vacancy = {
+  active: true,
+  title: "Pre-Primary / Primary Teacher",
+  employmentType: "FULL_TIME",
+  openings: 1,
+  datePosted: "2026-09-30",
+  validThrough: "2026-12-31",
+  summary:
+    "A full-time post teaching our pre-primary and primary classes. We settle which of them you take once we have met you.",
+} as const;
+
+/**
+ * Applications are invited continuously rather than against named posts, so
+ * nothing here states a number of vacancies, pay or conditions. Sent to the
+ * school's own address; a personal one would be scraped off a public page and
+ * could not be withdrawn afterwards.
+ */
+export const careers = {
+  title: "Teach at Walnut Academy",
+  intro: `We teach children from Play Group to Class 5 in ${school.locality}, through activity and play rather than by rote. Teaching here means small classes and knowing every child by name.`,
+  openTo:
+    "We are glad to hear from teachers at any time of year, whether or not a post is advertised.",
+  sendHeading: "What to send",
+  send: [
+    "Your CV",
+    "Your highest qualification",
+    "Years of teaching experience",
+    "The classes or subjects you can teach",
+  ],
+  channelHeading: "How to apply",
+  channelNote:
+    "By email or on WhatsApp, whichever suits you. Both take a CV as an attachment.",
+  mailSubject: "Teaching application",
+  whatsappMessage:
+    "Hello, I would like to apply to teach at Walnut Academy. I am sending my CV.",
+  close:
+    "We read everything that reaches us, and we get in touch with the teachers we would like to meet.",
+} as const;

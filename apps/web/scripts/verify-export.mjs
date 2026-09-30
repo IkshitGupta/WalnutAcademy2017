@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   admissions,
+  careers,
   contact,
   features,
   learningAreas,
@@ -13,6 +14,7 @@ import {
   school,
   social,
   techniques,
+  vacancy,
 } from "../src/content/school.ts";
 
 /**
@@ -81,7 +83,6 @@ for (const slot of contact.hours) {
   expect(`hours "${slot.label}"`, text.includes(slot.value));
 }
 expect("working week", text.includes(contact.hoursNote));
-expect("landmark", text.includes(contact.landmark));
 
 // The session comes from the date, so this matches its shape rather than a
 // fixed year, and catches a build that emitted the label with nothing after it.
@@ -207,6 +208,105 @@ for (const url of referenced) {
   );
 }
 expect("hero renditions referenced", referenced.size > 0);
+
+// The careers page is a second route, so it has to be exported at all, and it
+// carries the only invitation to apply. Asserted against the same content file
+// the page renders from.
+const careersHtml = await readFile(
+  path.join(out, "careers", "index.html"),
+  "utf8",
+).catch(() => "");
+expect("careers page emitted", careersHtml.length > 0);
+
+const careersText = decode(stripNonVisible(careersHtml));
+expect("careers heading", careersText.includes(careers.title));
+for (const item of careers.send) {
+  expect(`careers asks for "${item}"`, careersText.includes(item));
+}
+expect(
+  "careers shows the address as text",
+  careersText.includes(contact.email),
+);
+expect("careers email action", careersHtml.includes(`mailto:${contact.email}`));
+expect("careers whatsapp action", careersHtml.includes(contact.whatsappHref));
+
+// A personal address was deliberately kept off the public page; forwarding on
+// the school's account delivers applications without publishing a second one.
+const addresses = new Set(careersText.match(/[\w.+-]+@[\w-]+\.[\w.]+/g) ?? []);
+addresses.delete(contact.email);
+expect(
+  addresses.size
+    ? `careers publishes a second address (${[...addresses].join(", ")})`
+    : "careers publishes no second address",
+  addresses.size === 0,
+);
+
+// A standing invitation is not a vacancy, so the markup has to follow the
+// switch in both directions. Advertising a post that is filled, or one whose
+// closing date has passed, is a policy breach rather than an oversight.
+const posting = [
+  ...careersHtml.matchAll(
+    /<script type="application\/ld\+json">(.*?)<\/script>/gs,
+  ),
+]
+  .map(([, json]) => {
+    try {
+      return JSON.parse(decode(json));
+    } catch {
+      return null;
+    }
+  })
+  .find((data) => data?.["@type"] === "JobPosting");
+
+if (vacancy.active) {
+  expect("job posting emitted while the post is open", Boolean(posting));
+
+  if (posting) {
+    for (const field of [
+      "title",
+      "description",
+      "datePosted",
+      "validThrough",
+      "employmentType",
+      "hiringOrganization",
+      "jobLocation",
+    ]) {
+      expect(`job posting has ${field}`, Boolean(posting[field]));
+    }
+
+    // An export is built once and then left alone, so a closing date already
+    // in the past would ship an advert that was dead on arrival.
+    expect(
+      `job posting closes in the future (${posting.validThrough})`,
+      new Date(posting.validThrough) > new Date(),
+    );
+    expect(
+      "job posting title matches the content file",
+      posting.title === vacancy.title,
+    );
+    expect("careers names the open post", careersText.includes(vacancy.title));
+  }
+} else {
+  expect("no job posting while there is no open post", !posting);
+}
+
+expect(
+  "careers linked from the home page",
+  /href="\/careers\/?"/.test(rawIndex),
+);
+
+// `trailingSlash` is on, so the exported page canonicalises itself with one. A
+// sitemap entry written without it advertises an address the page itself
+// disclaims, splitting the signal between two URLs for one page.
+const sitemapXml = await readFile(path.join(out, "sitemap.xml"), "utf8");
+for (const [, canonical] of careersHtml.matchAll(
+  /rel="canonical"\s+href="([^"]+)"/g,
+)) {
+  expect(
+    `sitemap lists the careers canonical (${canonical})`,
+    sitemapXml.includes(`<loc>${canonical}</loc>`),
+  );
+}
 
 if (failures.length) {
   console.error(`✗ ${failures.length} check(s) failed:`);

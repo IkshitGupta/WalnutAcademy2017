@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import Link from "next/link";
 import { Menu, Phone, X } from "lucide-react";
 import { Crest, WhatsappIcon } from "@walnut/ui";
 import { SocialIcon } from "@/components/social-icon";
@@ -48,7 +49,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
 
   useEffect(() => {
     const sections = navLinks
-      .map(({ href }) => document.getElementById(href.slice(1)))
+      .map(({ href }) => document.getElementById(href.split("#")[1]))
       .filter((el): el is HTMLElement => el !== null);
 
     const observer = new IntersectionObserver(
@@ -56,7 +57,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
         const visible = entries
           .filter((entry) => entry.isIntersecting)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible) setActive(`#${visible.target.id}`);
+        if (visible) setActive(`/#${visible.target.id}`);
       },
       { rootMargin: "-45% 0px -45% 0px", threshold: [0, 0.2, 0.6, 1] },
     );
@@ -132,7 +133,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
             scrolled ? "h-14 lg:h-16" : "h-[4.25rem] lg:h-20"
           }`}
         >
-          <a href="#top" className="flex shrink-0 items-center gap-3">
+          <Link href="/#top" className="flex shrink-0 items-center gap-3">
             <Crest
               className={`w-auto shrink-0 transition-[height] duration-200 ${
                 scrolled ? "h-9 lg:h-10" : "h-10 lg:h-12 xl:h-14"
@@ -148,7 +149,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
                 </span>
               )}
             </span>
-          </a>
+          </Link>
 
           <nav
             aria-label="Primary"
@@ -157,7 +158,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
             {navLinks.map((link) => {
               const current = active === link.href;
               return (
-                <a
+                <Link
                   key={link.href}
                   href={link.href}
                   aria-current={current ? "location" : undefined}
@@ -175,7 +176,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
                         : "bg-navy/30 opacity-0 group-hover:opacity-100"
                     }`}
                   />
-                </a>
+                </Link>
               );
             })}
           </nav>
@@ -267,15 +268,22 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
 
           <nav className="flex flex-col gap-1 px-4 pt-4 sm:px-6">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.href}
                 href={link.href}
                 onClick={close}
                 className="rounded-2xl px-4 py-4 font-heading text-xl font-bold text-navy-deep hover:bg-navy-soft"
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
+            <Link
+              href="/careers"
+              onClick={close}
+              className="rounded-2xl px-4 py-4 font-heading text-xl font-bold text-navy-deep hover:bg-navy-soft"
+            >
+              Teaching jobs
+            </Link>
             <a
               href={contact.phoneHref}
               onClick={close}

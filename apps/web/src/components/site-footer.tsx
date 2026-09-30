@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Crest, Mascot } from "@walnut/ui";
 import { SocialIcon } from "@/components/social-icon";
 import { contact, navLinks, school, social } from "@/content/school";
@@ -75,14 +76,22 @@ export function SiteFooter() {
             <ul className="mt-4 grid grid-cols-2 gap-x-10 gap-y-2.5 text-sm">
               {navLinks.map((link) => (
                 <li key={link.href}>
-                  <a
+                  <Link
                     href={link.href}
                     className="transition-colors hover:text-white"
                   >
                     {link.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
+              <li>
+                <Link
+                  href="/careers"
+                  className="transition-colors hover:text-white"
+                >
+                  Teaching jobs
+                </Link>
+              </li>
             </ul>
           </nav>
 

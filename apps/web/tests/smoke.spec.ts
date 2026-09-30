@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { moments } from "../src/content/school";
+import { careers, contact, moments, vacancy } from "../src/content/school";
 
 test("loads without console errors", async ({ page }) => {
   const errors: string[] = [];
@@ -127,6 +127,101 @@ test("the gallery shows every photograph, each described", async ({ page }) => {
 test("phone number is reachable as a tel: link", async ({ page }) => {
   await page.goto("/");
   expect(await page.locator('a[href^="tel:"]').count()).toBeGreaterThan(0);
+});
+
+// The careers page is the only route other than the home page, so every
+// navigation link in the shared header, footer and announcement bar has to
+// resolve from somewhere that is not the home page. They are written as
+// /#section for that reason, and a bare #section would silently do nothing
+// here while still working everywhere it was tested before.
+test("navigation works from the careers page", async ({ page }) => {
+  await page.goto("/careers");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    careers.title,
+  );
+
+  // The invariant, asserted directly rather than through one link: nothing in
+  // the shared chrome may be a bare fragment, which from here would change the
+  // URL and scroll to nothing.
+  const bareFragments = await page.evaluate(() =>
+    [...document.querySelectorAll("header a, footer a")]
+      .map((anchor) => anchor.getAttribute("href") ?? "")
+      .filter((href) => href.startsWith("#")),
+  );
+  expect(bareFragments).toEqual([]);
+
+  // The footer nav is the one that is visible at every width.
+  const visit = page
+    .getByRole("navigation", { name: "Footer" })
+    .locator('a[href="/#visit"]');
+  await visit.click();
+  await page.waitForURL(/\/#visit$/);
+
+  // Landing on the home page is the point: a bare #visit would change the URL
+  // here and scroll to nothing, leaving the visitor on the careers page.
+  expect(new URL(page.url()).pathname).toBe("/");
+
+  const section = page.locator("#visit");
+  await expect(section).toBeInViewport();
+
+  // The page scrolls smoothly, so the target is passed through before it is
+  // settled on. What matters is where it comes to rest: clear of the sticky
+  // header rather than above the top of the window.
+  await expect
+    .poll(async () => Math.round((await section.boundingBox())?.y ?? -1), {
+      timeout: 5000,
+    })
+    .toBeGreaterThanOrEqual(0);
+});
+
+// A JobPosting describes a real vacancy with a closing date. The switch in
+// `school.ts` has to carry the visible block and the markup together, because
+// one without the other either hides an open post or advertises a filled one.
+test("the open post and its markup appear together", async ({ page }) => {
+  await page.goto("/careers");
+
+  const posting = await page.evaluate(() =>
+    [...document.querySelectorAll('script[type="application/ld+json"]')]
+      .map((node) => {
+        try {
+          return JSON.parse(node.textContent ?? "");
+        } catch {
+          return null;
+        }
+      })
+      .find((data) => data?.["@type"] === "JobPosting"),
+  );
+
+  if (vacancy.active) {
+    expect(posting?.title).toBe(vacancy.title);
+    expect(posting?.validThrough).toBe(vacancy.validThrough);
+    await expect(page.locator("main")).toContainText(vacancy.title);
+  } else {
+    expect(posting).toBeFalsy();
+    await expect(page.locator("main")).not.toContainText("Open now");
+  }
+
+  // Applying stays possible either way, which is the point of the page.
+  await expect(page.locator('a[href^="mailto:"]').first()).toBeVisible();
+});
+
+// Both channels have to carry a prefilled subject or message, otherwise an
+// application is indistinguishable from any other mail in the inbox.
+test("the careers page offers both ways to apply", async ({ page }) => {
+  await page.goto("/careers");
+
+  const email = page.locator('a[href^="mailto:"]').first();
+  await expect(email).toHaveAttribute(
+    "href",
+    new RegExp(`^mailto:${contact.email}\\?subject=`),
+  );
+
+  const whatsapp = page.locator(`a[href^="${contact.whatsappHref}?text="]`);
+  await expect(whatsapp).toHaveCount(1);
+
+  // A mailto opens nothing on a phone with no mail app configured, so the
+  // address has to be readable and copyable on the page itself.
+  await expect(page.locator("main")).toContainText(contact.email);
 });
 
 test.describe("mobile", () => {

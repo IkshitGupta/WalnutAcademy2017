@@ -69,19 +69,12 @@ export function Visit() {
             <MapPin className="h-5 w-5 text-gold" aria-hidden />
             Where we are
           </h3>
-          {/* The landmark leads: addresses here are navigated by what a place
-              sits behind, not by postal code. */}
-          <address className="mt-4 not-italic">
-            <span className="block font-heading text-lg font-bold text-white">
-              {contact.landmark}
-            </span>
-            <span className="mt-2 block leading-relaxed text-white/75">
-              {contact.addressLines.map((line) => (
-                <span key={line} className="block">
-                  {line}
-                </span>
-              ))}
-            </span>
+          <address className="mt-4 leading-relaxed text-white/75 not-italic">
+            {contact.addressLines.map((line) => (
+              <span key={line} className="block">
+                {line}
+              </span>
+            ))}
           </address>
 
           <dl className="mt-6 divide-y divide-white/10 border-y border-white/10">
