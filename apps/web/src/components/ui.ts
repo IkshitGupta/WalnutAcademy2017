@@ -6,7 +6,8 @@
  */
 
 /** Panel on one of the navy bands. */
-export const panelOnNavy = "rounded-3xl bg-white/5 p-8 ring-1 ring-white/10";
+export const panelOnNavy =
+  "rounded-3xl bg-white/5 p-6 ring-1 ring-white/10 sm:p-8";
 
 /** Section eyebrow, above the heading. */
 export const eyebrow =
@@ -17,8 +18,11 @@ export const groupHeading =
   "font-heading text-sm font-bold tracking-[0.14em] text-navy-deep uppercase";
 
 /** Preserves source order of both the groups and the items inside them. */
-export function groupBy<T>(items: readonly T[], key: (item: T) => string) {
-  const groups = new Map<string, T[]>();
+export function groupBy<T, K extends string>(
+  items: readonly T[],
+  key: (item: T) => K,
+) {
+  const groups = new Map<K, T[]>();
   for (const item of items) {
     const name = key(item);
     const existing = groups.get(name);

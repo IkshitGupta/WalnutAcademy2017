@@ -7,7 +7,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import Link from "next/link";
 import { Menu, Phone, X } from "lucide-react";
 import { Crest, WhatsappIcon } from "@walnut/ui";
 import { SocialIcon } from "@/components/social-icon";
@@ -47,6 +46,8 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Watching the sections of the page this header was rendered with. Moving
+  // between pages loads a document, so this never outlives them.
   useEffect(() => {
     const sections = navLinks
       .map(({ href }) => document.getElementById(href.split("#")[1]))
@@ -82,7 +83,11 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
     // Restore whatever was set inline rather than assuming it was empty.
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    closeRef.current?.focus();
+    // Focus lands on Close so the panel can be dismissed from the keyboard,
+    // while the reader keeps the place they opened it from. Asked for here as
+    // well, so that position holds wherever the room for the header is
+    // reserved.
+    closeRef.current?.focus({ preventScroll: true });
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -111,7 +116,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
-      opener?.focus();
+      opener?.focus({ preventScroll: true });
     };
   }, [open, close]);
 
@@ -129,27 +134,35 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
             introduce the school, which is only worth the height before the
             visitor has started reading. */}
         <div
-          className={`mx-auto flex max-w-6xl items-center gap-3 px-4 transition-[height] duration-200 sm:px-6 ${
+          className={`mx-auto flex max-w-6xl items-center gap-3 px-4 transition-[height] duration-200 sm:px-6 xl:gap-2 ${
             scrolled ? "h-14 lg:h-16" : "h-[4.25rem] lg:h-20"
           }`}
         >
-          <Link href="/#top" className="flex shrink-0 items-center gap-3">
+          <a
+            href="/#top"
+            className="flex min-w-0 items-center gap-3 lg:shrink-0"
+          >
             <Crest
               className={`w-auto shrink-0 transition-[height] duration-200 ${
                 scrolled ? "h-9 lg:h-10" : "h-10 lg:h-12 xl:h-14"
               }`}
             />
-            <span className="leading-tight">
-              <span className="block font-heading text-lg font-extrabold tracking-tight whitespace-nowrap text-navy-deep sm:text-xl">
+            {/* The name gives up its room before the menu button does, but only
+                where the two compete. Keeping the button wide enough to press
+                matters more than showing the name whole, at the point where
+                text has been enlarged far enough that both cannot fit. Wide
+                enough for both, the name stays whole. */}
+            <span className="min-w-0 leading-tight">
+              <span className="block truncate font-heading text-lg font-extrabold tracking-tight whitespace-nowrap text-navy-deep sm:text-xl">
                 {school.name}
               </span>
               {scrolled ? null : (
-                <span className="block text-[11px] font-medium tracking-wide whitespace-nowrap text-ink-soft sm:text-xs">
+                <span className="block truncate text-[11px] font-medium tracking-wide whitespace-nowrap text-ink-soft sm:text-xs">
                   {school.descriptor}
                 </span>
               )}
             </span>
-          </Link>
+          </a>
 
           <nav
             aria-label="Primary"
@@ -158,11 +171,11 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
             {navLinks.map((link) => {
               const current = active === link.href;
               return (
-                <Link
+                <a
                   key={link.href}
                   href={link.href}
                   aria-current={current ? "location" : undefined}
-                  className={`group relative px-2.5 py-2 text-sm font-semibold whitespace-nowrap transition-colors xl:px-3 ${
+                  className={`group relative px-2 py-2 text-sm font-semibold whitespace-nowrap transition-colors xl:px-2.5 ${
                     current ? "text-navy-deep" : "text-ink hover:text-navy-deep"
                   }`}
                 >
@@ -170,21 +183,23 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
                   {/* Navy rather than gold: gold is reserved for the action. */}
                   <span
                     aria-hidden
-                    className={`absolute inset-x-2.5 bottom-0.5 h-0.5 rounded-full transition-opacity xl:inset-x-3 ${
+                    className={`absolute inset-x-2 bottom-0.5 h-0.5 rounded-full transition-opacity xl:inset-x-2.5 ${
                       current
                         ? "bg-navy-deep opacity-100"
                         : "bg-navy/30 opacity-0 group-hover:opacity-100"
                     }`}
                   />
-                </Link>
+                </a>
               );
             })}
           </nav>
 
           {/* Ruled off from the navigation, so the bar reads as three things
               rather than one long row: where to go, where else to find the
-              school, and how to reach it. */}
-          <ul className="ml-2 hidden shrink-0 items-center gap-1 border-l border-navy/15 pl-2 lg:flex">
+              school, and how to reach it. Held back until there is width to
+              spare, since the footer carries the same two links and the
+              navigation and the phone number earn the room first. */}
+          <ul className="ml-2 hidden shrink-0 items-center gap-1 border-l border-navy/15 pl-2 xl:flex">
             {social.map((profile) => (
               <li key={profile.href}>
                 <a
@@ -228,7 +243,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
             ref={openerRef}
             type="button"
             onClick={() => setOpen(true)}
-            className="ml-auto inline-flex h-11 w-11 items-center justify-center rounded-full text-navy-deep hover:bg-navy-soft lg:hidden"
+            className="ml-auto inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-navy-deep hover:bg-navy-soft active:bg-navy-soft lg:hidden"
             aria-label="Open menu"
             aria-expanded={open}
           >
@@ -246,7 +261,7 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
           role="dialog"
           aria-modal="true"
           aria-label="Menu"
-          className="fixed inset-0 z-50 bg-cream lg:hidden"
+          className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-cream lg:hidden"
         >
           <div className="flex h-[4.25rem] items-center justify-between px-4 sm:px-6">
             <span className="flex items-center gap-3">
@@ -259,31 +274,31 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
               ref={closeRef}
               type="button"
               onClick={close}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-navy-deep hover:bg-navy-soft"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-navy-deep hover:bg-navy-soft"
               aria-label="Close menu"
             >
               <X className="h-6 w-6" aria-hidden />
             </button>
           </div>
 
-          <nav className="flex flex-col gap-1 px-4 pt-4 sm:px-6">
+          <nav className="flex flex-col gap-1 px-4 pt-4 pb-8 sm:px-6">
             {navLinks.map((link) => (
-              <Link
+              <a
                 key={link.href}
                 href={link.href}
                 onClick={close}
-                className="rounded-2xl px-4 py-4 font-heading text-xl font-bold text-navy-deep hover:bg-navy-soft"
+                className="rounded-2xl px-4 py-4 font-heading text-xl font-bold text-navy-deep hover:bg-navy-soft active:bg-navy-soft"
               >
                 {link.label}
-              </Link>
+              </a>
             ))}
-            <Link
-              href="/careers"
+            <a
+              href="/careers/"
               onClick={close}
-              className="rounded-2xl px-4 py-4 font-heading text-xl font-bold text-navy-deep hover:bg-navy-soft"
+              className="rounded-2xl px-4 py-4 font-heading text-xl font-bold text-navy-deep hover:bg-navy-soft active:bg-navy-soft"
             >
               Teaching jobs
-            </Link>
+            </a>
             <a
               href={contact.phoneHref}
               onClick={close}

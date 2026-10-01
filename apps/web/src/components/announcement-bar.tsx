@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { AdmissionNote } from "@/components/admission-note";
 import { admissionSession, stripe } from "@/content/school";
@@ -12,7 +11,7 @@ import { admissionSession, stripe } from "@/content/school";
 export function AnnouncementBar() {
   return (
     <div className="bg-navy-deep">
-      <Link
+      <a
         href="/#visit"
         className="group block transition-colors hover:bg-white/[0.07]"
       >
@@ -30,7 +29,7 @@ export function AnnouncementBar() {
         {/* Outside the paragraph, so the line a sighted visitor reads is also
             the whole of that paragraph's text. */}
         <span className="sr-only">{" How to visit the school."}</span>
-      </Link>
+      </a>
 
       {/* The same colours, in the same order, as the cap on the hero card. */}
       <div className="flex h-[3px]" aria-hidden>

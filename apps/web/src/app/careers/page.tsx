@@ -1,41 +1,56 @@
 import type { Metadata } from "next";
 import { Check, Mail, Phone } from "lucide-react";
 import { WhatsappIcon } from "@walnut/ui";
+import { OpenPost } from "@/components/open-post";
 import { Section } from "@/components/section";
-import { careers, contact, school, siteUrl, vacancy } from "@/content/school";
+import {
+  careers,
+  contact,
+  school,
+  siteUrl,
+  vacancy,
+  vacancyClosesAt,
+  vacancyOpen,
+} from "@/content/school";
 
-export const metadata: Metadata = {
-  title: vacancy.active ? `${vacancy.title} wanted` : "Teaching jobs",
-  description: vacancy.active
-    ? `${school.name} in ${school.locality} is looking for a ${vacancy.title.toLowerCase()}. Applications by email or WhatsApp.`
-    : `Teaching positions at ${school.name}, an English medium school in ${school.locality} teaching Play Group to Class 5. Send a CV by email or on WhatsApp.`,
-  alternates: { canonical: "/careers" },
+// Exported files carry whatever was true when they were written, and nothing
+// here can correct itself afterwards, so none of it names the open post. The
+// claim that a post is open is made where the format can also say when it
+// stops being true: in the JobPosting below, through `validThrough`, and on
+// the page itself, which reads the closing date from the visitor's clock.
+const pageTitle = "Teaching jobs";
+
+const pageDescription = `Teaching positions at ${school.name}, an English medium school in ${school.locality} teaching Play Group to Class 5. Send a CV by email or on WhatsApp.`;
+
+// A job reaches most people as a link pasted into a message, where the preview
+// is all there is to read. Next replaces these wholesale rather than merging
+// them, so the parts worth keeping from the site defaults are repeated here.
+const share = {
+  title: `${pageTitle} · ${school.name}`,
+  description: pageDescription,
+  images: [
+    {
+      url: "/images/share.jpg",
+      width: 1200,
+      height: 630,
+      alt: `The ${school.name} building in ${school.locality}`,
+    },
+  ],
 };
 
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-/**
- * Built from the parts of the date rather than through `Date`, which reads an
- * ISO date as midnight UTC and would print the day before in any timezone
- * behind it. A build machine's zone is not worth trusting for this.
- */
-function readableDate(iso: string) {
-  const [year, month, day] = iso.split("-").map(Number);
-  return `${day} ${MONTHS[month - 1]} ${year}`;
-}
+export const metadata: Metadata = {
+  title: pageTitle,
+  description: pageDescription,
+  alternates: { canonical: "/careers" },
+  openGraph: {
+    ...share,
+    type: "website",
+    locale: "en_IN",
+    siteName: school.name,
+    url: "/careers",
+  },
+  twitter: { ...share, card: "summary_large_image" },
+};
 
 /**
  * Only emitted while a post is genuinely open. A JobPosting describes a real
@@ -51,9 +66,8 @@ const jobPosting = {
   title: vacancy.title,
   description: `<p>${vacancy.summary}</p><p>${careers.intro}</p>`,
   datePosted: vacancy.datePosted,
-  validThrough: vacancy.validThrough,
+  validThrough: vacancyClosesAt,
   employmentType: vacancy.employmentType,
-  totalJobOpenings: vacancy.openings,
   hiringOrganization: {
     "@type": "School",
     name: school.name,
@@ -66,7 +80,7 @@ const jobPosting = {
 };
 
 const mailHref = `mailto:${contact.email}?subject=${encodeURIComponent(
-  vacancy.active ? `Application: ${vacancy.title}` : careers.mailSubject,
+  careers.mailSubject,
 )}`;
 
 const whatsappHref = `${contact.whatsappHref}?text=${encodeURIComponent(
@@ -77,50 +91,37 @@ export default function CareersPage() {
   return (
     <>
       {vacancy.active ? (
-        <script
-          type="application/ld+json"
-          // The payload is built above from the content file, not from anything
-          // a visitor can reach.
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPosting) }}
-        />
+        <>
+          <script
+            type="application/ld+json"
+            // The payload is built above from the content file, not from anything
+            // a visitor can reach.
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPosting) }}
+          />
+          <script
+            // Read before anything is painted. The panel below is taken away
+            // again once the page comes alive, which on a phone is a second or
+            // more after the reader is already looking at it, and long enough
+            // for them to have started reading a post that closed.
+            dangerouslySetInnerHTML={{
+              __html: `if(Date.now()>=${new Date(vacancyClosesAt).getTime()})document.documentElement.dataset.postClosed=""`,
+            }}
+          />
+        </>
       ) : null}
 
-      <Section
-        eyebrow="Work with us"
-        title={careers.title}
-        titleAs="h1"
-        // With a post open the panel below leads instead, so that someone who
-        // arrived from a job search meets the post rather than the school.
-        intro={vacancy.active ? undefined : careers.intro}
-      >
-        {vacancy.active ? (
-          <>
-            <div className="rounded-3xl bg-navy-soft p-6 sm:p-7">
-              <p className="font-heading text-sm font-bold tracking-[0.14em] text-navy-deep uppercase">
-                Open now
-              </p>
-              <h2 className="mt-2 font-heading text-2xl font-extrabold">
-                {vacancy.title}
-              </h2>
-              <p className="mt-3 max-w-2xl leading-relaxed text-ink">
-                {vacancy.summary}
-              </p>
-              <p className="mt-4 text-sm text-ink-soft">
-                Full time ·{" "}
-                <span className="font-semibold text-navy-deep">
-                  Applications close {readableDate(vacancy.validThrough)}
-                </span>
-              </p>
-            </div>
-            <p className="mt-8 max-w-3xl text-lg text-ink-soft">
-              {careers.intro}
-            </p>
-          </>
-        ) : (
-          <p className="max-w-3xl font-heading text-lg font-bold text-navy-deep">
-            {careers.openTo}
-          </p>
-        )}
+      <Section eyebrow="Work with us" title={careers.title} titleAs="h1">
+        {/* One arrangement, whichever state the post is in, so a page that
+            outlives its own closing date still reads as it was drawn. The post
+            leads, because someone who arrived from a job search on a phone has
+            one screenful before they decide to stay. */}
+        <OpenPost builtOpen={vacancyOpen()} />
+
+        <p className="max-w-3xl text-lg text-ink-soft">{careers.intro}</p>
+
+        <p className="mt-6 max-w-3xl font-heading text-lg font-bold text-navy-deep">
+          {careers.openTo}
+        </p>
 
         <h2 className="mt-10 font-heading text-xl font-extrabold">
           {careers.sendHeading}
@@ -133,13 +134,10 @@ export default function CareersPage() {
             </li>
           ))}
         </ul>
-
-        {vacancy.active ? (
-          <p className="mt-8 max-w-3xl text-ink-soft">{careers.openTo}</p>
-        ) : null}
       </Section>
 
       <Section
+        id="apply"
         tone="navy"
         title={careers.channelHeading}
         intro={careers.channelNote}
@@ -147,7 +145,7 @@ export default function CareersPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           <a
             href={mailHref}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-gold px-6 py-3 font-heading font-bold text-navy-deep transition-transform hover:scale-[1.02]"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-gold px-6 py-3 font-heading font-bold text-navy-deep transition-transform hover:scale-[1.02] active:brightness-90"
           >
             <Mail className="h-5 w-5" aria-hidden />
             Email your CV
@@ -156,7 +154,7 @@ export default function CareersPage() {
             href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-whatsapp px-6 py-3 font-heading font-bold text-navy-deep transition-transform hover:scale-[1.02]"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-whatsapp px-6 py-3 font-heading font-bold text-navy-deep transition-transform hover:scale-[1.02] active:brightness-90"
           >
             <WhatsappIcon className="h-5 w-5" />
             Send it on WhatsApp
@@ -171,7 +169,9 @@ export default function CareersPage() {
               <Mail className="h-4 w-4 shrink-0 text-gold" aria-hidden />
               <span className="sr-only">Email</span>
             </dt>
-            <dd className="font-semibold text-white">{contact.email}</dd>
+            <dd className="[overflow-wrap:anywhere] font-semibold text-white">
+              {contact.email}
+            </dd>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <dt className="flex items-center">

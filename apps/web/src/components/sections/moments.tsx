@@ -27,7 +27,7 @@ export function Moments() {
           <li key={moment.src} className="relative">
             <img
               src={`/images/${moment.src}-800.webp`}
-              srcSet={`/images/${moment.src}-400.webp 400w, /images/${moment.src}-800.webp 800w, /images/${moment.src}-1200.webp 1200w`}
+              srcSet={`/images/${moment.src}-400.webp 400w, /images/${moment.src}-600.webp 600w, /images/${moment.src}-800.webp 800w, /images/${moment.src}-1200.webp 1200w`}
               sizes="(min-width: 768px) 20vw, 50vw"
               alt={moment.alt}
               width={800}
@@ -35,7 +35,7 @@ export function Moments() {
               loading="lazy"
               className="block aspect-[4/3] w-full object-cover"
             />
-            <p className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-3 pt-8 pb-2 font-heading text-xs font-bold text-white [text-shadow:0_1px_3px_rgb(0_0_0/0.7)] sm:text-sm">
+            <p className="moment-caption absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-3 pt-8 pb-2 font-heading text-xs font-bold text-white sm:text-sm">
               {moment.caption}
             </p>
           </li>

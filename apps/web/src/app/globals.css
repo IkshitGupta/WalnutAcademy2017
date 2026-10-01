@@ -46,16 +46,22 @@
 @layer base {
   html {
     scroll-behavior: smooth;
-    /* Holds an anchor target just clear of the pinned header: the announcement
-       bar, the nav row and the stripe. The header is taller from lg. This is
-       the only place the offset is set, so a target lands the same distance
-       below the header wherever it is on the page. */
-    scroll-padding-top: 7rem;
+  }
+
+  /* Holds a section jumped to clear of the header pinned over the page, and
+     off the phone's call bar at the foot of it. Carried by the content rather
+     than by the page, because the page would hold that space for the bars'
+     own controls too, and reaching one of those backwards then moves the page
+     under the reader by the height of everything reserved. */
+  :where(main, footer) * {
+    scroll-margin-top: 7rem;
+    scroll-margin-bottom: 4.5rem;
   }
 
   @media (min-width: 1024px) {
-    html {
-      scroll-padding-top: 8rem;
+    :where(main, footer) * {
+      scroll-margin-top: 8rem;
+      scroll-margin-bottom: 0;
     }
   }
 
@@ -107,12 +113,28 @@
     text-shadow: 0 2px 16px rgb(0 0 0 / 0.45);
   }
 
+  /* Holds the caption legible wherever the photograph behind it happens to be
+     bright. Kept here beside the other shadow over a photograph, rather than
+     written into the markup, so the one guarding the palette does not have to
+     treat a shadow as a brand colour. */
+  .moment-caption {
+    text-shadow: 0 1px 3px rgb(0 0 0 / 0.7);
+  }
+
   /* A halo easing outwards from the announcement dot. Slow and low-contrast so
      it reads as a sign of life rather than as something demanding attention.
      The reduced-motion rule below stops it. */
   .admission-dot {
     animation: admission-halo 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
+}
+
+/* Read before the page is painted once the closing date has passed, so a post
+   nobody has taken down is never shown and then withdrawn under the reader.
+   Deliberately outside the layers: a utility class on the panel would
+   otherwise win, and an advert for a post that has closed would be back. */
+[data-post-closed] .open-post {
+  display: none;
 }
 
 @keyframes admission-halo {

@@ -24,6 +24,21 @@ export const school = {
 } as const;
 
 /**
+ * The affiliation the school does not hold, in the spellings it could be
+ * written in. Punctuation and spacing between the letters, and a line break or
+ * a tag between the words, all say the same thing to anyone reading, so they
+ * are allowed for. A soft hyphen is allowed for too: it is invisible wherever
+ * the line does not break, so the letters read as one word. Kept here, and
+ * used by every check, so that the rule cannot be tightened in one place and
+ * left behind in another.
+ */
+const between = "[\\s.\\-\\u00b7\\u2022/\\\\|_\\u00ad\\u200b]{0,3}";
+export const boardClaim = new RegExp(
+  `\\bC${between}B${between}S${between}E\\b|Central\\s+Board\\s+of\\s+Secondary\\s+Education`,
+  "i",
+);
+
+/**
  * Admissions for an academic session open in the November before that session
  * begins, so the session worth advertising changes each November. The site is
  * exported as static files and may serve for a long time between builds, so
@@ -420,11 +435,11 @@ export const navLinks = [
  * and the page returns to the standing invitation, taking the JobPosting
  * markup with it.
  *
- * `validThrough` is the second catch and the more important one. An export is
- * built once and then left alone, so if nobody rebuilds, that date is what
- * tells search engines the posting has closed. Leaving a filled post
- * advertised is a policy breach, not an oversight, so it is required here
- * rather than optional.
+ * The closing day is the second catch and the more important one. An export is
+ * built once and then left alone, so if nobody rebuilds, it is what tells a
+ * search engine the posting has closed and what tells the page to stop
+ * showing it. Leaving a filled post advertised is a policy breach, not an
+ * oversight, so it is required here rather than optional.
  *
  * Nothing in here may be guessed. Anything the school has not settled is left
  * out, which is why there is no salary and no list of requirements.
@@ -433,12 +448,23 @@ export const vacancy = {
   active: true,
   title: "Pre-Primary / Primary Teacher",
   employmentType: "FULL_TIME",
-  openings: 1,
   datePosted: "2026-09-30",
-  validThrough: "2026-12-31",
+  closingDay: "2026-12-31",
   summary:
     "A full-time post teaching our pre-primary and primary classes. We settle which of them you take once we have met you.",
 } as const;
+
+/**
+ * The single instant the post closes, at the end of its closing day where the
+ * school is. Anything that decides whether the post is open reads this, so a
+ * visitor abroad, the build and a search engine all agree on one moment rather
+ * than each taking the date to mean something different.
+ */
+export const vacancyClosesAt = `${vacancy.closingDay}T23:59:59+05:30`;
+
+export function vacancyOpen(on = new Date()) {
+  return vacancy.active && on < new Date(vacancyClosesAt);
+}
 
 /**
  * Applications are invited continuously rather than against named posts, so
@@ -448,7 +474,7 @@ export const vacancy = {
  */
 export const careers = {
   title: "Teach at Walnut Academy",
-  intro: `We teach children from Play Group to Class 5 in ${school.locality}, through activity and play rather than by rote. Teaching here means small classes and knowing every child by name.`,
+  intro: `We teach children from Play Group to Class 5 in ${school.locality}, through activity and play rather than by rote.`,
   openTo:
     "We are glad to hear from teachers at any time of year, whether or not a post is advertised.",
   sendHeading: "What to send",

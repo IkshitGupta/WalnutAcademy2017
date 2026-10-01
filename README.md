@@ -67,30 +67,87 @@ the network but hot reloading does not. Nothing there affects a build.
 
 Three layers, all run in CI:
 
-- **`pnpm colours:check`** compares the hex literals in the `packages/ui`
-  artwork against the palette in `globals.css`. Instant, needs no dependencies,
-  and runs before anything is installed. See
+- **`pnpm colours:check`** compares the colours written into the artwork
+  against the palette in `globals.css`. Instant, needs no dependencies, and
+  runs before anything is installed. It walks `packages/ui/src` and
+  `apps/web/src` for `.tsx`, `.ts` and `.svg`, covering `app/icon.svg` as well
+  as the components, and reads colours written as `rgba(...)` as well as hex,
+  so a shadow written in parts is guarded like everything else. See
   [The crest and mascot](#the-crest-and-mascot) for why those colours cannot be
   written as `var(--color-*)`, and therefore why they need guarding from the
-  outside. It also reports any hex in `packages/ui` that is neither tracked
-  against a token nor listed as artwork-owned, so a new colour has to be a
-  decision rather than an accident.
+  outside. It also reports any colour that is neither tracked against a token
+  nor listed as artwork-owned, so a new one has to be a decision rather than an
+  accident, and it fails rather than reporting success if a folder it expects
+  to read has gone, or if a colour it is tracking is drawn nowhere.
 - **`pnpm test`** builds the export and asserts the generated HTML still
   carries the contact details, every class and learning area, the recognition
-  wording, valid JSON-LD matching `school.ts`, every `srcset` rendition, and
-  that the careers page exports with both ways to apply, one address and no
-  `JobPosting` markup. `<script>` and `<style>` are stripped first, so content
-  embedded in Next's RSC payload cannot mask something that no longer renders.
+  wording, valid JSON-LD matching `school.ts`, every `srcset` rendition, a
+  description on every image, and that the careers page exports with both ways
+  to apply, one address, its own share preview and `JobPosting` markup that
+  agrees with the switch in `school.ts`.
+
+  Two things make those assertions mean something. The head, scripts, styles,
+  anything carrying the `hidden` attribute and **every tag** are stripped
+  first, so what is searched is the page's own text rather than its markup: a
+  phrase deleted from the page no longer matches because it survives in a
+  title, a description or an `alt` attribute. This is not the same as what a
+  visitor can see, since a utility class can hide something at one screen size
+  and leave the text in place; that is what the browser tests are for. And each
+  check is scoped to the region that has to carry it, because the same facts
+  are printed in several places: the careers assertions read that page's
+  `<main>` rather than the header and footer around it, and the class, facility
+  and timings checks read the section a visitor was sent to rather than the
+  whole page.
+
+  What the school may and may not claim about itself is the exception, and runs
+  against every page twice: once as written, where a claim can hide in a
+  description that never reaches the screen, and once as read, where a claim
+  broken across two elements comes back together. Those rules are then applied
+  to pages deliberately doctored to break them, so a rule that has stopped
+  catching anything says so.
+
+  The task is deliberately **not cached**: it asserts that the post's closing
+  date is still in the future, which is a different answer tomorrow, and a
+  replayed log would go on passing forever.
+
 - **`pnpm test:e2e`** runs Playwright against the built export rather than the
   dev server, on a mobile and a desktop viewport. Covers the areas that static
   checks cannot reach: the mobile menu (full-viewport overlay, focus handling,
-  Escape, focus restoration), the persistent call bar, anchor navigation, and
-  that every image actually decodes.
+  Escape, focus restoration, holding the reader's place, and every item being
+  reachable on a short screen), the call bar staying pinned to the bottom of
+  the screen, anchor navigation including a second press of the same link, the
+  Back button after a jump to a section, that the way to reach the school is
+  actually on screen at both sizes rather than merely present in the markup,
+  and that every image decodes. One test asserts the rule behind all the
+  navigation ones: that no link on either page is handled in the page rather
+  than by the browser. The rule itself is enforced by a lint rule banning the
+  `next/link` import, since a test only sees a link it thought to look for.
 
-The menu test exists because of a specific bug: `backdrop-filter` on the header
-creates a containing block, which scoped the `fixed` overlay to the 80px header
-instead of the viewport. The assertion on the overlay's height catches that
-class of regression.
+Several of these exist because of a specific bug, and each is written to fail
+against that bug rather than around it.
+
+`backdrop-filter` on the header creates a containing block, which scoped the
+menu's `fixed` overlay to the 80px header instead of the viewport. The
+assertion on the overlay's height catches that class of regression.
+
+The room left for the pinned header used to be set on the scrolling page
+itself, which meant the browser held that space for anything it brought into
+view, including the header's own controls. Stepping backwards from the page
+into the header therefore scrolled the page to reveal a control that had never
+left the screen, by roughly 350px on a desktop width and 380–415px on a phone,
+again on each further step back. The offset now sits on the elements being
+navigated to rather than on the page as a whole, and the same walk moves
+nothing.
+
+Focus is separately asked not to scroll when the menu closes and the button
+that opened it takes focus back. That was worth about 400px on a phone against
+the old rule; against the current one it changes nothing either way, and it
+stays to hold the reader's position independently of where the header's room is
+reserved.
+
+Both tests have to let the header's own compaction finish before taking a
+reading, or they measure the tail of that animation instead. That is what the
+shared helper at the top of the file is for.
 
 The header height test exists for another. The header compacts once the page
 moves, which shortens it, and because it sits in the flow the browser then
@@ -168,6 +225,16 @@ crops and converts them to WebP at several widths, writing to
 source pixels inside that script. Renditions are never upscaled and are named
 after the width they actually have, so `srcset` descriptors stay truthful.
 
+Gallery widths are chosen for the screens that fetch them. A phone drawing a
+178px tile at three device pixels wants about 600, and the step above costs
+230 KB across the ten photographs for pixels nobody can see. The widths are
+there to be fitted to the layout, not rounded up.
+
+The script also writes `share.jpg`, which is what someone sees when a link to
+the site is pasted into a message. It is the only JPEG the site ships: WhatsApp
+and the rest are where these links travel, and the preview is most of what
+decides whether a parent opens one.
+
 Replacing `building.jpg` needs care. The hero opens with it directly beneath the
 header and shows it whole rather than cropped, because the facade reaches both
 edges of the frame and its signage runs from the roof board down to the boundary
@@ -214,11 +281,16 @@ which stays six parent-facing items.
 
 ### Advertising an open post
 
-`vacancy` in `school.ts` carries a switch. With `active: true` the page leads
-with the post and emits `JobPosting` structured data, which is what makes a
-listing eligible for the jobs results at the top of a Google search. With
-`active: false` the page returns to a standing invitation and the markup goes
-with it. Applying works the same in both states.
+`vacancy` in `school.ts` carries a switch. With `active: true` the page shows a
+panel naming the post and emits `JobPosting` structured data, which is what
+makes a listing eligible for the jobs results at the top of a Google search.
+With `active: false` the panel and the markup both go, and what is left is the
+standing invitation to write at any time.
+
+The page is arranged once and reads the same either way, rather than as two
+layouts switched between. Only the panel comes and goes, which is why a page
+that outlives its own closing date still reads as it was drawn. Applying works
+the same in both states.
 
 Two rules govern this, and both are enforced rather than trusted.
 
@@ -228,6 +300,23 @@ important guard is `validThrough`: an export is built once and then left alone,
 so if nobody rebuilds after the post is filled, that date is the only thing
 telling search engines the listing has closed. The export check refuses to
 publish a posting whose closing date has already passed.
+
+The visible panel is held to the same instant, and it does not wait for a
+rebuild either. `vacancyClosesAt` is the one moment the post closes, at the end
+of its closing day where the school is, and the page, the build check and the
+structured data all read it. `vacancyOpen()` compares it against the visitor's
+own clock, so once that moment passes the panel stands down and the standing
+invitation is what is left, whatever timezone it is read from. The structured
+data stays in the served file, because that is what `validThrough` is for and a
+crawler reads the file rather than the page it becomes.
+
+Nothing that cannot correct itself names the post. The page title, description
+and share preview say only that the school takes teaching applications, because
+an exported file keeps whatever was true when it was written and no rebuild may
+ever come. A claim with an expiry is made only where the format can carry one:
+in the `JobPosting`, through `validThrough`, and on the page, which reads the
+clock. The same reasoning keeps the post's name out of the prefilled email
+subject.
 
 **Nothing in a posting may be guessed.** There is no salary and no list of
 requirements because the school has not fixed them, and a `JobPosting` is a
@@ -257,7 +346,8 @@ an application is recognisable in an inbox. Both are asserted by `pnpm test`.
 **Only the school's address is published.** Forwarding on the school's Gmail
 delivers applications anywhere else they are wanted, without putting a second
 address on a public page where it is scraped and cannot be withdrawn. `pnpm
-test` fails if any address other than the school's appears on the page.
+test` fails if any address other than the school's appears on any page, read
+through link escaping as well as in plain sight.
 
 **There is deliberately no `JobPosting` structured data while no post is open.**
 It describes a real, dated vacancy with an employment type and a closing date. A
@@ -281,6 +371,14 @@ The footer and announcement bar render on the server, so they cannot read the
 current route; absolute links avoid needing to. The browser tests assert that no
 link in the chrome begins with `#`, which is the invariant rather than a
 sample of it.
+
+They are also plain `<a>` elements rather than `next/link`, which is the
+opposite of what the framework's own lint rule asks for, so that rule is off
+and a different one bans the `next/link` import outright. The reasoning is in
+`eslint.config.mjs`. Enforcing it through the import is deliberate: the
+framework's rule only sees an `href` written out in full, and a browser test
+only sees a link it thought to look for, so neither notices one arriving in
+the middle of a page.
 
 ### The crest and mascot
 

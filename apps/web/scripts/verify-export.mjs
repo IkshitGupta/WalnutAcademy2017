@@ -3,18 +3,23 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   admissions,
+  boardClaim,
   careers,
   contact,
   features,
   learningAreas,
   moments,
+  navLinks,
   prePrimary,
   primary,
   primaryLabel,
   school,
+  siteUrl,
   social,
   techniques,
   vacancy,
+  vacancyClosesAt,
+  vacancyOpen,
 } from "../src/content/school.ts";
 
 /**
@@ -23,9 +28,11 @@ import {
  * The site is static and content-driven, so the realistic failure mode is a
  * section silently dropping out of the page rather than a runtime error.
  *
- * Assertions run against markup with <script> and <style> removed. Next embeds
- * the whole RSC payload in the page, so a naive substring search would still
- * find content that no longer renders anywhere visible.
+ * Content assertions run against the text a visitor can read, with the head,
+ * scripts, styles and every tag removed. Markup left in place is what makes a
+ * check of this shape worthless: a phrase deleted from the page still matches
+ * while it survives in a description, a title or an image description, so the
+ * check goes on passing long after the page stopped saying it.
  */
 const out = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -34,8 +41,8 @@ const out = path.join(
 );
 
 const failures = [];
-const expect = (label, condition) => {
-  if (!condition) failures.push(label);
+const expect = (label, condition, detail) => {
+  if (!condition) failures.push(detail ? `${label} — ${detail}` : label);
 };
 
 const decode = (html) =>
@@ -44,15 +51,111 @@ const decode = (html) =>
     .replace(/&quot;/g, '"')
     .replace(/&#x27;|&#39;/g, "'")
     .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
+    .replace(/&gt;/g, ">")
+    // Reads as a space, so a phrase held together by one has to match a phrase
+    // written with an ordinary space.
+    .replace(/&nbsp;|&#160;|&#xa0;/gi, "\u00a0");
+
+// Void elements hold nothing, so there is no region after one to remove.
+const VOID = new Set([
+  "area",
+  "base",
+  "br",
+  "col",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "link",
+  "meta",
+  "source",
+  "track",
+  "wbr",
+]);
+
+/**
+ * An opening tag with its quoted values blanked out, so that a word sitting in
+ * a class list is not read as an attribute standing on its own. Utility class
+ * names and attribute names overlap, and `hidden` is both.
+ */
+const withoutValues = (tag) => tag.replace(/"[^"]*"|'[^']*'/g, '""');
+
+/**
+ * Drops every element hidden from view, along with everything inside it. The
+ * end of the region is counted rather than taken from the next closing tag, so
+ * an element of the same name nested within does not end it early.
+ */
+const stripHidden = (html) => {
+  const OPENING = /<(\w+)\b[^>]*>/g;
+  let opening;
+
+  while ((opening = OPENING.exec(html))) {
+    const [tag, name] = opening;
+    if (!/\shidden(?=[\s/>=])/.test(withoutValues(tag))) continue;
+
+    let end = opening.index + tag.length;
+    if (!VOID.has(name.toLowerCase())) {
+      const SCAN = new RegExp(`<${name}\\b[^>]*>|</${name}\\s*>`, "gi");
+      SCAN.lastIndex = end;
+
+      let depth = 1;
+      let step;
+      while (depth > 0 && (step = SCAN.exec(html))) {
+        depth += step[0].startsWith("</") ? -1 : 1;
+      }
+      end = depth === 0 ? SCAN.lastIndex : html.length;
+    }
+
+    html = `${html.slice(0, opening.index)} ${html.slice(end)}`;
+    OPENING.lastIndex = opening.index + 1;
+  }
+
+  return html;
+};
 
 const stripNonVisible = (html) =>
-  html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+  stripHidden(
+    html
+      .replace(/<head\b[^>]*>[\s\S]*?<\/head>/gi, " ")
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " "),
+  )
+    // An SVG title is an accessible name rather than anything drawn.
+    .replace(/<title\b[^>]*>[\s\S]*?<\/title>/gi, " ")
     // React separates adjacent text expressions with an empty comment, which
     // would otherwise split a phrase that renders as one run of text.
     .replace(/<!--[\s\S]*?-->/g, "");
+
+/**
+ * The reading order of a passage, as one run of text. Tags become spaces so
+ * that two elements never fuse into a word nobody wrote, and the result
+ * collapses so a phrase split across elements still matches how it looks on
+ * screen. Takes markup whose invisible parts have already been removed, so
+ * that a region scoped out of a page carries its surroundings' visibility
+ * with it rather than being read on its own.
+ */
+const asText = (markup) =>
+  decode(markup.replace(/<[^>]+>/g, " "))
+    .replace(/\s+/g, " ")
+    .trim();
+
+/**
+ * The page's own content, without the header and footer every route shares.
+ * Unscoped, a check that a route says something is satisfied by the chrome
+ * around it, which is how a page can lose its whole body and still pass.
+ */
+const bodyOf = (html) =>
+  html.match(/<main\b[^>]*>([\s\S]*)<\/main>/)?.[1] ?? "";
+
+/**
+ * One section of the home page. The same facts are printed in more than one
+ * place, so a check that only asks whether the page mentions something at all
+ * passes while the panel a visitor was sent to stands empty.
+ */
+const sectionOf = (html, id) =>
+  html.match(
+    new RegExp(`<section[^>]*\\sid="${id}"[^>]*>([\\s\\S]*?)</section>`),
+  )?.[1] ?? "";
 
 const entries = await readdir(out, { recursive: true, withFileTypes: true });
 const pages = entries
@@ -62,27 +165,42 @@ const pages = entries
 expect("at least one exported page", pages.length > 0);
 
 const rawIndex = await readFile(path.join(out, "index.html"), "utf8");
-const text = decode(stripNonVisible(rawIndex));
+// Scoped out of the stripped markup rather than the raw file, so a region
+// hidden from view above a section takes that section with it.
+const seenIndex = stripNonVisible(rawIndex);
+const text = asText(seenIndex);
+const homeBody = asText(bodyOf(seenIndex));
 // Attribute values keep their markup but not their entities, so apostrophes in
 // copy still match what was written in the content file.
 const attributes = decode(rawIndex);
 
+expect("page has a body", homeBody.length > 0);
 expect("school name", text.includes(school.name));
-expect("tagline", text.includes(school.tagline));
+expect("tagline", homeBody.includes(school.tagline));
 expect("managing society", text.includes(school.society));
 
-// The recognition number must never appear bare: unlabelled, an affiliation
-// number reads as a claim of board affiliation, which the school does not hold.
-expect("recognition number", text.includes(school.recognitionNo));
-expect("recognition label", text.includes(school.recognition));
+// The recognition number must be printed where a visitor can read it, and it
+// must never appear bare: unlabelled, an affiliation number reads as a claim
+// of board affiliation, which the school does not hold.
+expect("recognition number is printed", text.includes(school.recognitionNo));
+expect("recognition wording is printed", text.includes(school.recognition));
 
 expect("telephone link", rawIndex.includes(contact.phoneHref));
 expect("whatsapp link", rawIndex.includes(contact.whatsappHref));
 expect("email", text.includes(contact.email));
+
+// Scoped to the panel a visitor is sent to when they want to come and see the
+// school. The footer prints the same facts, and would answer for a panel that
+// had lost them.
+const visit = asText(sectionOf(seenIndex, "visit"));
+expect("visit panel has content", visit.length > 0);
 for (const slot of contact.hours) {
-  expect(`hours "${slot.label}"`, text.includes(slot.value));
+  expect(`visit panel hours "${slot.label}"`, visit.includes(slot.value));
 }
-expect("working week", text.includes(contact.hoursNote));
+expect("visit panel working week", visit.includes(contact.hoursNote));
+for (const line of contact.addressLines) {
+  expect(`visit panel address "${line}"`, visit.includes(line));
+}
 
 // The session comes from the date, so this matches its shape rather than a
 // fixed year, and catches a build that emitted the label with nothing after it.
@@ -93,30 +211,35 @@ expect(
 for (const profile of social) {
   expect(`${profile.label} link`, rawIndex.includes(profile.href));
 }
-for (const line of contact.addressLines) {
-  expect(`address line "${line}"`, text.includes(line));
-}
+
+// Each list is checked inside the section that carries it. Asked of the whole
+// page, a card losing its name still passes on the strength of the same words
+// appearing in an introduction somewhere above it.
+const classes = asText(sectionOf(seenIndex, "classes"));
+const learning = asText(sectionOf(seenIndex, "learning"));
+const facilities = asText(sectionOf(seenIndex, "facilities"));
+const gallery = asText(sectionOf(seenIndex, "moments"));
 
 for (const stage of prePrimary) {
-  expect(`class "${stage.name}"`, text.includes(stage.name));
+  expect(`class "${stage.name}"`, classes.includes(stage.name));
 }
 // Primary is shown as one stage naming its span, not as five separate classes,
 // so the label that renders is what gets asserted.
-expect(`class "${primaryLabel}"`, text.includes(primaryLabel));
-expect("primary description", text.includes(primary.body));
+expect(`class "${primaryLabel}"`, classes.includes(primaryLabel));
+expect("primary description", classes.includes(primary.body));
 
 for (const area of learningAreas) {
-  expect(`learning area "${area.title}"`, text.includes(area.title));
+  expect(`learning area "${area.title}"`, learning.includes(area.title));
 }
 for (const technique of techniques) {
-  expect(`technique "${technique.title}"`, text.includes(technique.title));
+  expect(`technique "${technique.title}"`, homeBody.includes(technique.title));
 }
 for (const feature of features) {
-  expect(`feature "${feature.label}"`, text.includes(feature.label));
+  expect(`feature "${feature.label}"`, facilities.includes(feature.label));
 }
 
 for (const moment of moments) {
-  expect(`moment "${moment.caption}"`, text.includes(moment.caption));
+  expect(`moment "${moment.caption}"`, gallery.includes(moment.caption));
   // A photograph of children carries meaning someone using a screen reader
   // would otherwise lose entirely.
   expect(
@@ -125,8 +248,40 @@ for (const moment of moments) {
   );
 }
 
-for (const anchor of ["about", "classes", "learning", "facilities", "visit"]) {
+// Every destination the navigation offers, so a link cannot outlive the
+// section it points at.
+for (const anchor of [
+  "top",
+  "about",
+  "classes",
+  "learning",
+  "facilities",
+  "moments",
+  "visit",
+]) {
   expect(`anchor #${anchor}`, rawIndex.includes(`id="${anchor}"`));
+}
+for (const [, href] of rawIndex.matchAll(/href="\/#([\w-]+)"/g)) {
+  expect(
+    `link to #${href} has somewhere to land`,
+    rawIndex.includes(`id="${href}"`),
+  );
+}
+
+// The row a visitor reads across the top of a wide screen is built separately
+// from the one behind the menu button, so it is asked for in its own right.
+// It is also the part of the page most easily lost to a reading that treats a
+// utility class as an attribute of the same name.
+const primaryNav = asText(
+  seenIndex.match(
+    /<nav[^>]*aria-label="Primary"[^>]*>([\s\S]*?)<\/nav>/,
+  )?.[1] ?? "",
+);
+for (const link of navLinks) {
+  expect(
+    `primary navigation offers "${link.label}"`,
+    primaryNav.includes(link.label),
+  );
 }
 
 // The persistent mobile call bar is the highest-value element on the page, and
@@ -166,14 +321,164 @@ if (ldMatch) {
   );
 }
 
-// Walnut Academy holds Rajasthan state recognition, not CBSE affiliation.
-// Checked across every exported page, not just the home page.
-const BOARD_CLAIM = /\bCBSE\b|Central Board of Secondary Education/i;
+/**
+ * What the school may and may not say about itself. This is the one rule that
+ * has to hold on every page and in every part of one, so it is written once,
+ * applied to each page, and then proved against pages doctored to break it.
+ *
+ * Each page is read twice: as it was written, where a claim can hide in a
+ * description that never reaches the screen, and as it is read, where a claim
+ * broken across two elements comes back together.
+ */
+const claimProblems = (html) => {
+  const problems = [];
+  const written = decode(html);
+  const read = asText(stripNonVisible(html));
+
+  for (const [where, content] of [
+    ["markup", written],
+    ["text", read],
+  ]) {
+    if (boardClaim.test(content)) problems.push(`board claim in the ${where}`);
+    // The school is recognised by the state and affiliated to no board, so
+    // the word belongs nowhere on the site in any form.
+    if (/affiliat/i.test(content)) {
+      problems.push(`affiliation claim in the ${where}`);
+    }
+  }
+
+  // Unlabelled, the recognition number reads as a board affiliation number.
+  // Counted rather than merely looked for: the label being somewhere on the
+  // page says nothing about the number that was printed further down.
+  const printings = [...written.matchAll(new RegExp(school.recognitionNo, "g"))]
+    .length;
+  const labelled = [
+    ...written.matchAll(
+      new RegExp(
+        `${school.recognition}[^A-Za-z0-9]{0,24}${school.recognitionNo}`,
+        "g",
+      ),
+    ),
+  ].length;
+  if (labelled !== printings) {
+    problems.push(
+      `recognition number printed without its label (${labelled} of ${printings} labelled)`,
+    );
+  }
+
+  // One address is published, on purpose. A second one reaches a public page
+  // through a link as easily as through a printed line, and through its
+  // escaping as easily as in plain sight.
+  const unescaped = written.replace(/%[0-9a-f]{2}/gi, (sequence) => {
+    try {
+      return decodeURIComponent(sequence);
+    } catch {
+      return sequence;
+    }
+  });
+  const addresses = new Set(unescaped.match(/[\w.+-]+@[\w-]+\.[\w.]+/g) ?? []);
+  addresses.delete(contact.email);
+  if (addresses.size) {
+    problems.push(`a second address (${[...addresses].join(", ")})`);
+  }
+
+  return problems;
+};
+
 for (const page of pages) {
-  const visible = decode(stripNonVisible(await readFile(page, "utf8")));
+  const name = path.relative(out, page);
+  const html = await readFile(page, "utf8");
+
+  for (const problem of claimProblems(html)) {
+    expect(`${name}: ${problem}`, false);
+  }
+
+  // Every photograph here is content rather than decoration, so each one has
+  // something to say to a reader who cannot see it.
+  const undescribed = [...html.matchAll(/<img\b[^>]*>/g)].filter(
+    ([tag]) => !/\salt="[^"]+"/.test(tag),
+  ).length;
+  expect(`every image in ${name} is described`, undescribed === 0);
+}
+
+// A rule nothing can break is a rule nobody is keeping. Each of these is a way
+// the same claim has been made before, and each has to be seen for what it is.
+// The problem each one raises is named, because a page that trips a different
+// rule proves that other rule twice and this one not at all.
+for (const [description, planted, expected] of [
+  [
+    "a board claim in a description",
+    (html) =>
+      html.replace("<head>", '<head><meta name="x" content="CBSE affiliated">'),
+    /board claim/,
+  ],
+  [
+    "a board claim spelled out",
+    (html) => html.replace("</main>", "<p>C.B.S.E.</p></main>"),
+    /board claim/,
+  ],
+  [
+    "a board name broken across elements",
+    (html) =>
+      html.replace(
+        "</main>",
+        "<p>Central Board of <b>Secondary Education</b></p></main>",
+      ),
+    /board claim/,
+  ],
+  [
+    "a board name held together by a fixed space",
+    (html) =>
+      html.replace(
+        "</main>",
+        "<p>Central Board of&nbsp;Secondary Education</p></main>",
+      ),
+    /board claim/,
+  ],
+  [
+    "the school described as affiliated",
+    (html) => html.replace("</main>", "<p>Affiliated to a board</p></main>"),
+    /affiliation claim/,
+  ],
+  [
+    "the recognition number printed bare",
+    (html) => html.replace("</main>", `<p>${school.recognitionNo}</p></main>`),
+    /without its label/,
+  ],
+  [
+    "the recognition number under a borrowed label",
+    (html) =>
+      html.replace(
+        "</main>",
+        `<p>Affiliation No. ${school.recognitionNo}</p></main>`,
+      ),
+    /affiliation claim|without its label/,
+  ],
+  [
+    "a second address written out",
+    (html) => html.replace("</main>", "<p>someone@example.com</p></main>"),
+    /second address/,
+  ],
+  [
+    "a second address inside a link",
+    (html) =>
+      html.replace(
+        "</main>",
+        '<p><a href="mailto:someone%40example.com">Write</a></p></main>',
+      ),
+    /second address/,
+  ],
+]) {
+  const doctored = planted(
+    await readFile(path.join(out, "index.html"), "utf8"),
+  );
+  const problems = claimProblems(doctored);
   expect(
-    `no board claim in ${path.relative(out, page)}`,
-    !BOARD_CLAIM.test(visible),
+    `the claim rules notice ${description}`,
+    problems.some((problem) => expected.test(problem)),
+    problems.length
+      ? `raised instead: ${problems.join("; ")}`
+      : "raised nothing",
   );
 }
 
@@ -218,27 +523,89 @@ const careersHtml = await readFile(
 ).catch(() => "");
 expect("careers page emitted", careersHtml.length > 0);
 
-const careersText = decode(stripNonVisible(careersHtml));
+// Scoped to the page's own content. The footer carries the address and the
+// header carries the school name on every route, so an unscoped check here
+// would survive the page losing everything it was written to say.
+const careersMarkup = bodyOf(careersHtml);
+const careersText = asText(bodyOf(stripNonVisible(careersHtml)));
+expect("careers page has a body", careersText.length > 0);
 expect("careers heading", careersText.includes(careers.title));
+expect("careers explains itself", careersText.includes(careers.intro));
+expect("careers says who may apply", careersText.includes(careers.openTo));
+expect("careers names what to send", careersText.includes(careers.sendHeading));
 for (const item of careers.send) {
   expect(`careers asks for "${item}"`, careersText.includes(item));
 }
+expect("careers closing line", careersText.includes(careers.close));
 expect(
   "careers shows the address as text",
   careersText.includes(contact.email),
 );
-expect("careers email action", careersHtml.includes(`mailto:${contact.email}`));
-expect("careers whatsapp action", careersHtml.includes(contact.whatsappHref));
-
-// A personal address was deliberately kept off the public page; forwarding on
-// the school's account delivers applications without publishing a second one.
-const addresses = new Set(careersText.match(/[\w.+-]+@[\w-]+\.[\w.]+/g) ?? []);
-addresses.delete(contact.email);
 expect(
-  addresses.size
-    ? `careers publishes a second address (${[...addresses].join(", ")})`
-    : "careers publishes no second address",
-  addresses.size === 0,
+  "careers email action",
+  careersMarkup.includes(`mailto:${contact.email}`),
+);
+expect("careers whatsapp action", careersMarkup.includes(contact.whatsappHref));
+
+// Both actions open with the application already named, so one arrives
+// recognisable rather than as an unlabelled message.
+expect(
+  "email action opens with a subject",
+  /mailto:[^"]*\?subject=[^"&]+/.test(careersMarkup),
+);
+expect(
+  "whatsapp action opens with a message",
+  /wa\.me\/[^"]*\?text=[^"&]+/.test(careersMarkup),
+);
+
+// Shared as a link, a job reaches people through a preview rather than the
+// page, so it has to describe the post rather than inherit the home page.
+const canonical = careersHtml.match(/rel="canonical"\s+href="([^"]+)"/)?.[1];
+expect("careers names its canonical address", Boolean(canonical));
+
+for (const [property, pattern] of [
+  ["og:title", /property="og:title"\s+content="([^"]*)"/],
+  ["og:description", /property="og:description"\s+content="([^"]*)"/],
+  ["og:url", /property="og:url"\s+content="([^"]*)"/],
+  ["twitter:title", /name="twitter:title"\s+content="([^"]*)"/],
+  ["twitter:description", /name="twitter:description"\s+content="([^"]*)"/],
+]) {
+  const value = careersHtml.match(pattern)?.[1];
+  expect(`careers sets ${property}`, Boolean(value));
+  expect(
+    `careers ${property} is its own, not the home page's`,
+    !value || !rawIndex.includes(`content="${value}"`),
+  );
+}
+
+// A link pasted into a message is mostly a picture, and a preview that names a
+// picture the site never shipped is a blank one.
+for (const [name, html] of [
+  ["home", rawIndex],
+  ["careers", careersHtml],
+]) {
+  const image = html.match(/property="og:image"\s+content="([^"]*)"/)?.[1];
+  expect(`${name} offers a share image`, Boolean(image));
+
+  const file = image?.replace(/^https?:\/\/[^/]+/, "");
+  expect(
+    `${name} share image exists (${file})`,
+    Boolean(file) &&
+      (await readFile(path.join(out, file.slice(1))).then(
+        () => true,
+        () => false,
+      )),
+  );
+}
+
+// A preview that points somewhere other than the page being shared sends the
+// reader to the wrong place and splits the signal between two addresses.
+const shareUrl = careersHtml.match(
+  /property="og:url"\s+content="([^"]*)"/,
+)?.[1];
+expect(
+  `og:url matches the canonical (${shareUrl} vs ${canonical})`,
+  Boolean(shareUrl) && shareUrl === canonical,
 );
 
 // A standing invitation is not a vacancy, so the markup has to follow the
@@ -274,11 +641,30 @@ if (vacancy.active) {
       expect(`job posting has ${field}`, Boolean(posting[field]));
     }
 
+    // A day that does not exist, 31 November say, is not rejected: it rolls
+    // into the next month and goes on reading as a date everywhere it is
+    // compared against itself. Asking the calendar to give the same day back
+    // is what tells the two apart.
+    const [year, month, day] = vacancy.closingDay.split("-").map(Number);
+    const roundTrip = new Date(Date.UTC(year, month - 1, day));
+    expect(
+      `the closing day is a real date (${vacancy.closingDay})`,
+      roundTrip.getUTCFullYear() === year &&
+        roundTrip.getUTCMonth() === month - 1 &&
+        roundTrip.getUTCDate() === day,
+    );
+
     // An export is built once and then left alone, so a closing date already
-    // in the past would ship an advert that was dead on arrival.
+    // in the past would ship an advert that was dead on arrival. Asked through
+    // the same function the page itself uses, so the build and the browser
+    // cannot disagree about when the post closes.
     expect(
       `job posting closes in the future (${posting.validThrough})`,
-      new Date(posting.validThrough) > new Date(),
+      vacancyOpen(),
+    );
+    expect(
+      "job posting closes when the content file says it does",
+      posting.validThrough === vacancyClosesAt,
     );
     expect(
       "job posting title matches the content file",
@@ -305,6 +691,15 @@ for (const [, canonical] of careersHtml.matchAll(
   expect(
     `sitemap lists the careers canonical (${canonical})`,
     sitemapXml.includes(`<loc>${canonical}</loc>`),
+  );
+}
+
+// Not a failure: the domain is a known pre-launch item, and the build has to
+// go on working before one is registered. Said on every run so it is in front
+// of whoever ships, rather than only in the README.
+if (siteUrl.includes("walnutacademy.in")) {
+  console.warn(
+    `! ${siteUrl} is the placeholder domain. The canonical URL, the share image and the job posting all point at it, so register it before the site goes live.`,
   );
 }
 

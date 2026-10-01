@@ -27,9 +27,10 @@ const jobs = [
   {
     src: "principal.jpg",
     name: "principal",
-    // Framed close to head and shoulders so she holds the frame at the size
-    // the page shows her, with the stage behind her kept out of it.
-    crop: { left: 430, top: 620, width: 1152, height: 1536 },
+    // Head and shoulders with room above, framed to sit at the same distance
+    // as the portrait beside it: the two are read as a pair, and one drawn
+    // closer than the other reads as a difference in standing.
+    crop: { left: 150, top: 560, width: 1800, height: 2400 },
     widths: [360, 720],
     quality: 80,
   },
@@ -56,7 +57,7 @@ const jobs = [
  * even grid. `attention` picks the busiest region, which in a photograph of a
  * group is the group.
  */
-const GALLERY_WIDTHS = [400, 800, 1200];
+const GALLERY_WIDTHS = [400, 600, 800, 1200];
 const GALLERY_RATIO = 3 / 4;
 
 const gallery = [
@@ -124,6 +125,23 @@ for (const name of gallery) {
     );
   }
 }
+
+/**
+ * The picture that stands in for the whole site when a link to it is pasted
+ * into a message. Written as JPEG at the proportions the preview is cropped
+ * to, because the places these links are shared reach further than the formats
+ * the site itself can afford to use.
+ */
+const share = sharp(path.join(SRC, "building.jpg"))
+  .rotate()
+  .extract({ left: 0, top: 60, width: 2400, height: 1350 })
+  .resize({ width: 1200, height: 630, fit: "cover" })
+  .jpeg({ quality: 78, mozjpeg: true });
+
+const shareInfo = await share.toFile(path.join(OUT, "share.jpg"));
+console.log(
+  `share.jpg  ${shareInfo.width}x${shareInfo.height}  ${Math.round(shareInfo.size / 1024)} KB`,
+);
 
 const written = await readdir(OUT);
 console.log(`\n${written.length} renditions written to public/images`);

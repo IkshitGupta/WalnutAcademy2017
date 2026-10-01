@@ -57,7 +57,7 @@ export function Visit() {
             <Mail className="h-4 w-4 shrink-0 text-gold" aria-hidden />
             <a
               href={`mailto:${contact.email}`}
-              className="text-white/85 underline underline-offset-4 hover:text-white"
+              className="[overflow-wrap:anywhere] text-white/85 underline underline-offset-4 hover:text-white"
             >
               {contact.email}
             </a>

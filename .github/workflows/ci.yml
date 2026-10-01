@@ -19,8 +19,8 @@ jobs:
       # which would break installs here.
       - run: node scripts/lockfile.mjs
 
-      # Fails fast if the vector artwork in packages/ui has drifted from the
-      # palette. Neither script needs dependencies installed.
+      # Fails fast if the vector artwork has drifted from the palette. Neither
+      # script needs dependencies installed.
       - run: node scripts/brand-colours.mjs
 
       - uses: pnpm/action-setup@v4

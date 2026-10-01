@@ -13,19 +13,22 @@ export function MobileActionBar() {
           of the bar and the only filled treatment. */}
       <a
         href={contact.phoneHref}
-        className="col-span-2 flex items-center justify-center gap-2 bg-gold py-4 text-sm font-bold text-navy-deep"
+        className="col-span-2 flex items-center justify-center gap-2 bg-gold py-4 text-sm font-bold text-navy-deep active:brightness-90"
       >
-        <Phone className="h-5 w-5" aria-hidden />
+        <Phone className="h-5 w-5 shrink-0" aria-hidden />
         Call the school
       </a>
       <a
         href={contact.whatsappHref}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center justify-center gap-2 bg-whatsapp py-4 text-sm font-bold text-navy-deep"
+        className="flex items-center justify-center gap-2 bg-whatsapp py-4 text-sm font-bold text-navy-deep active:brightness-90"
       >
-        <WhatsappIcon className="h-5 w-5" />
-        WhatsApp
+        <WhatsappIcon className="h-5 w-5 shrink-0" />
+        {/* Enlarged far enough and the two will not both fit. The mark is what
+            identifies the action at a glance, so the word gives way first and
+            stays available to a screen reader. */}
+        <span className="max-[319px]:sr-only">WhatsApp</span>
       </a>
     </div>
   );

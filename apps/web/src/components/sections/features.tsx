@@ -35,6 +35,18 @@ const icons = {
   parents: MessagesSquare,
 } as const;
 
+/**
+ * Written out by group name rather than taken from position, so reordering the
+ * content leaves each group with the colour it was given. The tints are the
+ * same three the page already uses for its bands, and the last of them leads
+ * into the one that follows this section.
+ */
+const tints: Record<(typeof features)[number]["group"], string> = {
+  "Safety and care": "bg-navy-soft",
+  Learning: "bg-gold-soft",
+  "Play and family": "bg-magenta-soft",
+};
+
 export function Features() {
   return (
     <Section
@@ -51,15 +63,20 @@ export function Features() {
             className={index > 0 ? "border-t border-navy/10 pt-8" : undefined}
           >
             <h3 className={groupHeading}>{group.name}</h3>
-            <ul className="mt-4 grid gap-x-10 gap-y-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-x-12">
+            <ul className="mt-4 grid gap-x-10 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-x-12">
               {group.items.map((feature) => {
                 const Icon = icons[feature.icon];
                 return (
-                  <li key={feature.label} className="flex items-start gap-3">
-                    <Icon
-                      className="mt-0.5 h-5 w-5 shrink-0 text-navy"
-                      aria-hidden
-                    />
+                  <li key={feature.label} className="flex items-center gap-2.5">
+                    {/* The tile carries the group's colour while the mark
+                        inside it stays navy, so the three kinds of provision
+                        are told apart at a glance without the colour becoming
+                        something a reader has to interpret. */}
+                    <span
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${tints[group.name]}`}
+                    >
+                      <Icon className="h-4 w-4 text-navy-deep" aria-hidden />
+                    </span>
                     <span className="text-ink">{feature.label}</span>
                   </li>
                 );

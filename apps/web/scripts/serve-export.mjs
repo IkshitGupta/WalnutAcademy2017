@@ -31,7 +31,13 @@ const types = {
 
 async function resolve(urlPath) {
   const decoded = decodeURIComponent(urlPath.split("?")[0]);
-  const candidate = path.join(root, decoded);
+  const candidate = path.resolve(root, "." + path.posix.sep + decoded);
+
+  // Decoding can turn an escaped separator back into a real one, so the path
+  // is only trustworthy once it has been resolved. Anything that lands outside
+  // the export is not ours to serve.
+  const within = candidate === root || candidate.startsWith(root + path.sep);
+  if (!within) return null;
 
   // `output: "export"` with trailingSlash writes directory indexes.
   for (const file of [candidate, path.join(candidate, "index.html")]) {
@@ -45,7 +51,12 @@ async function resolve(urlPath) {
 }
 
 createServer(async (request, response) => {
-  const file = await resolve(request.url ?? "/");
+  let file = null;
+  try {
+    file = await resolve(request.url ?? "/");
+  } catch {
+    // A malformed escape leaves nothing to serve.
+  }
 
   if (!file) {
     response.writeHead(404, { "content-type": "text/plain" });
@@ -57,6 +68,6 @@ createServer(async (request, response) => {
     "content-type": types[path.extname(file)] ?? "application/octet-stream",
   });
   createReadStream(file).pipe(response);
-}).listen(port, () => {
+}).listen(port, "127.0.0.1", () => {
   console.log(`serving ${root} on http://127.0.0.1:${port}`);
 });

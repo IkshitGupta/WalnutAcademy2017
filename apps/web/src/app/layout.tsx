@@ -22,6 +22,16 @@ const inter = Inter({
 
 const description = `${school.name} is an English medium school in ${school.locality}, teaching children from Play Group to Class 5 through activity-based, play-way learning. Established ${school.established}.`;
 
+// Most people meet a link to this site pasted into a message rather than in a
+// search result, where the picture is most of what they see before deciding
+// whether to open it.
+const shareImage = {
+  url: "/images/share.jpg",
+  width: 1200,
+  height: 630,
+  alt: `The ${school.name} building in ${school.locality}`,
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
@@ -44,11 +54,13 @@ export const metadata: Metadata = {
     siteName: school.name,
     title: `${school.name} · ${school.tagline}`,
     description,
+    images: [shareImage],
   },
   twitter: {
     card: "summary_large_image",
     title: `${school.name} · ${school.tagline}`,
     description,
+    images: [shareImage],
   },
   alternates: { canonical: "/" },
 };
@@ -93,7 +105,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body
-        className="flex min-h-full flex-col pb-[60px] lg:pb-0"
+        className="flex min-h-full flex-col pb-[3.5rem] lg:pb-0"
         suppressHydrationWarning
       >
         <script
