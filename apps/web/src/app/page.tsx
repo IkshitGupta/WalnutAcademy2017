@@ -1,5 +1,5 @@
 import { Hero } from "@/components/sections/hero";
-import { Stats } from "@/components/sections/stats";
+// import { Stats } from "@/components/sections/stats";
 import { About } from "@/components/sections/about";
 import { Classes } from "@/components/sections/classes";
 import { Techniques } from "@/components/sections/techniques";
@@ -20,7 +20,11 @@ export default function HomePage() {
   return (
     <>
       <Hero />
-      <Stats />
+      {/* Held back until the school confirms the counts are ones it wants
+          published. The section itself is left in place, so it returns by
+          uncommenting this and the import above, together with the student
+          count in the structured data in layout.tsx. */}
+      {/* <Stats /> */}
       <About />
       <Classes />
       <Techniques />

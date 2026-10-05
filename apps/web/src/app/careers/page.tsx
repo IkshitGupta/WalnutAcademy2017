@@ -21,7 +21,7 @@ import {
 // the page itself, which reads the closing date from the visitor's clock.
 const pageTitle = "Teaching jobs";
 
-const pageDescription = `Teaching positions at ${school.name}, an English medium school in ${school.locality} teaching Play Group to Class 5. Send a CV by email or on WhatsApp.`;
+const pageDescription = `Teaching positions at ${school.name}, an English medium school in ${school.locality} teaching Play Group to Class 8. Send a CV by email or on WhatsApp.`;
 
 // A job reaches most people as a link pasted into a message, where the preview
 // is all there is to read. Next replaces these wholesale rather than merging

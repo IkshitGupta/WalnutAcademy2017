@@ -1,7 +1,7 @@
 # Walnut Academy
 
 Website for Walnut Academy, an English medium school in Mansarovar, Jaipur,
-teaching Play Group through Class 5.
+teaching Play Group through Class 8.
 
 The site is informational: no admissions form, no payments, no login. It is a
 single, richly sectioned page that answers what a parent searching locally wants
@@ -473,13 +473,20 @@ separate, text-free simplification for the favicon.
 - **Have Dr. Rekha Gupta and Surender Mohan Gupta review their messages.** They
   are drafts, written only from confirmed facts, and are meant to be rewritten
   in their own words.
-- **Confirm the student and teacher counts.** Written as "250+" and "12+" so
-  small changes do not make the page wrong.
+- **Confirm the student and teacher counts, then put the figures back.** The
+  band of figures is commented out in `apps/web/src/app/page.tsx` until the
+  school is happy for the numbers to be shown. The student count is held back
+  with it, in the structured data in `layout.tsx`, so the figure is not handed
+  to search engines while it is off the page. Both are marked, and restoring
+  them is uncommenting the two places and returning `stats` to the import in
+  `layout.tsx`. The counts are written as "250+" and "12+" so small changes do
+  not make the page wrong.
 - **Confirm the photographed days are yearly ones.** The section is headed
-  "What a year here looks like", so it reads as a normal year rather than as ten
-  particular occasions. Each caption is only what the photograph shows, which is
-  safe on its own, but the heading is worth checking against a day the school
-  marked once and does not intend to repeat.
+  "What a year here looks like" and closes by saying there are many more
+  through the year, so it reads as a sample of a normal year rather than as ten
+  particular occasions. Each caption is only what the photograph shows, which
+  is safe on its own, but the heading is worth checking against a day the
+  school marked once and does not intend to repeat.
 - **Correct the third-party directory listings.** Justdial and CareerSocho
   currently describe the school as CBSE with science labs, an auditorium and
   sports facilities. None of that is accurate, and those listings presently rank

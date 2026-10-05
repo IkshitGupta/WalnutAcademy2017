@@ -261,15 +261,18 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
             <WhatsappIcon className="h-5 w-5" />
           </a>
 
+          {/* "Call Now" at every desktop width. The row is capped at the page's
+              own width and so stops growing at 1280, where the navigation, the
+              profiles and this button all reach their full size at once; the
+              number was being fitted into room that never arrives. It is kept
+              for anyone reading the page aloud, and the Visit panel, the footer
+              and the bar pinned to a phone all carry it in full. */}
           <a
             href={contact.phoneHref}
             className="hidden shrink-0 items-center gap-2 rounded-full bg-gold px-5 py-2.5 text-sm font-bold whitespace-nowrap text-navy-deep transition-transform hover:scale-[1.03] lg:ml-2 lg:inline-flex"
           >
             <Phone className="h-4 w-4" aria-hidden />
-            <span className="hidden xl:inline">
-              Call {contact.phoneDisplay}
-            </span>
-            <span className="xl:hidden">Call Now</span>
+            Call Now <span className="sr-only">{contact.phoneDisplay}</span>
           </a>
 
           <button

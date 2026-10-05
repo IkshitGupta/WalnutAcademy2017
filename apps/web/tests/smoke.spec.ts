@@ -1556,9 +1556,9 @@ test("the ways of getting in touch are marked as such", async ({ page }) => {
 // A join between two bands was carried by hue alone, and two of them had drifted
 // to the same lightness, so on anything that loses colour the page ran together.
 // Each neighbouring pair now has to differ in both, which is what makes the
-// difference survive a greyscale rendering or a printed sheet. Sections that
-// deliberately share a surface are counted rather than waved through, so a new
-// one cannot appear unnoticed.
+// difference survive a greyscale rendering or a printed sheet. The one band
+// allowed to run into its neighbour is named, so a second cannot appear
+// unnoticed.
 test("neighbouring bands differ in lightness as well as hue", async ({
   page,
 }) => {
@@ -1588,6 +1588,9 @@ test("neighbouring bands differ in lightness as well as hue", async ({
         el.id ||
         el.querySelector("h2")?.textContent?.trim().slice(0, 16) ||
         "(no heading)",
+      // The band of figures is the one that carries a list of them under no
+      // heading of its own. Every other band opens with one.
+      figures: !el.querySelector("h2") && Boolean(el.querySelector("dl")),
       rgb: (getComputedStyle(el).backgroundColor.match(/\d+/g) ?? []).map(
         Number,
       ),
@@ -1604,14 +1607,14 @@ test("neighbouring bands differ in lightness as well as hue", async ({
   const difference = (a: number[], b: number[]) =>
     Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
-  let shared = 0;
+  const shared: string[] = [];
   for (let i = 0; i + 1 < bands.length; i++) {
     const one = bands[i];
     const two = bands[i + 1];
     const join = `${one.name} / ${two.name}`;
 
     if (one.rgb.join() === two.rgb.join()) {
-      shared++;
+      if (!one.figures) shared.push(join);
       continue;
     }
 
@@ -1625,9 +1628,11 @@ test("neighbouring bands differ in lightness as well as hue", async ({
     ).toBeGreaterThanOrEqual(1.5);
   }
 
-  // The figures band runs into the section beneath it on purpose; nothing else
-  // may, because a second one would be two sections the reader cannot separate.
-  expect(shared, "pairs of sections sharing one surface").toBe(1);
+  // The figures band runs into the section beneath it on purpose. Anywhere
+  // else, one surface carried across a join gives the reader two sections they
+  // cannot tell apart, so the rule is named rather than a count kept: the
+  // allowance holds whether or not the figures are currently on the page.
+  expect(shared, "sections sharing one surface without meaning to").toEqual([]);
 });
 
 // Which group a facility belongs to is carried by the colour of the mark beside
@@ -2775,7 +2780,7 @@ test.describe("mobile", () => {
 
     await expect(page.getByRole("navigation", { name: "Menu" })).toHaveCount(0);
     await expect(
-      page.getByRole("heading", { name: "Play Group through Class 5" }),
+      page.getByRole("heading", { name: "Play Group through Class 8" }),
     ).toBeInViewport();
   });
 });

@@ -108,7 +108,7 @@ export const contact = {
 const [schoolHours, officeHours] = contact.hours;
 
 export const quickFacts = [
-  { label: "Play Group to Class 5", detail: null, icon: "classes" },
+  { label: "Play Group to Class 8", detail: null, icon: "classes" },
   { label: "English Medium", detail: null, icon: "language" },
   {
     label: `${schoolHours.label} ${schoolHours.value}`,
@@ -122,12 +122,12 @@ export const stats = [
   { value: "2017", label: "Established", icon: "calendar" },
   { value: "250+", label: "Students", icon: "students" },
   { value: "12+", label: "Teachers", icon: "teachers" },
-  { value: "9", label: "Classes", icon: "classes" },
+  { value: "10+", label: "Classes", icon: "classes" },
 ] as const;
 
 /** Prospectus, opening paragraph. */
 export const story = [
-  "Walnut Academy provides a child friendly, safe, secure, caring and stimulating environment, where we nurture your child and give them a quality education.",
+  "Walnut Academy provides a child-friendly, safe, secure, caring and stimulating environment, where we nurture your child and give them a quality education.",
   "Our firm belief about teaching is learning by playing, by doing, and in an interactive way. Everything follows from that. Our ambience, our curriculum, our activities, our teaching aids, our toys and our equipment are all designed in a fun-loving manner.",
 ];
 
@@ -148,7 +148,7 @@ export const techniques = [
     body: "Lessons are shaped around the child rather than the other way around.",
   },
   {
-    title: "Activity Based Learning",
+    title: "Activity-Based Learning",
     body: "Children learn by doing: building, making, moving and trying things out.",
   },
   {
@@ -199,8 +199,17 @@ export const prePrimary = [
 /** The pre-primary colours, in class order, used wherever the motif appears. */
 export const stripe = prePrimary.map((stage) => stage.colour);
 
-export const primary = {
-  classes: ["Class 1", "Class 2", "Class 3", "Class 4", "Class 5"],
+export const schoolClasses = {
+  list: [
+    "Class 1",
+    "Class 2",
+    "Class 3",
+    "Class 4",
+    "Class 5",
+    "Class 6",
+    "Class 7",
+    "Class 8",
+  ],
   body: "Foundation subjects taught in English, with activity and practice in equal measure.",
 };
 
@@ -210,15 +219,18 @@ const roman = (className: string) =>
   ROMAN[Number(className.replace(/\D/g, "")) - 1] ?? className;
 
 /**
- * "Primary" alone is read as Class 1 to 5 in some schools and Class 1 to 8 in
- * others, so the span is named alongside it, in the Roman numerals the school
- * uses on its own signage. Derived from the class list so it stays true to the
- * classes the school runs, and shared with the export check so the test asserts
- * the label that actually renders.
+ * The numbered classes are shown as one stage naming its span rather than as
+ * eight panels of their own. "Primary" is not used for it: the word is read as
+ * Class 1 to 5 by most of Jaipur and as Class 1 to 8 elsewhere, and the school
+ * now teaches the whole of the wider range, so the word would mislead whichever
+ * way it was taken. Naming the span in the Roman numerals the school uses on
+ * its own signage says it without the word at all. Derived from the list so it
+ * stays true to the classes the school runs, and shared with the export check
+ * so the test asserts the label that actually renders.
  */
-export const primaryLabel = `Primary (${roman(primary.classes[0])}–${roman(
-  primary.classes[primary.classes.length - 1],
-)})`;
+export const schoolClassesLabel = `Classes ${roman(schoolClasses.list[0])}–${roman(
+  schoolClasses.list[schoolClasses.list.length - 1],
+)}`;
 
 /** Prospectus, "Fun Learning Areas". */
 export const learningAreas = [
@@ -228,7 +240,7 @@ export const learningAreas = [
     body: "The natural world of earth, plants, animals, birds, seasons and food, explored by observing with all five senses.",
   },
   {
-    title: "Math Corner",
+    title: "Maths Corner",
     icon: "math",
     body: "Early number concepts and simple calculation, taught in an interesting and enjoyable way.",
   },
@@ -284,19 +296,19 @@ export const features = [
   { label: "CCTV surveillance", icon: "cctv", group: "Safety and care" },
   { label: "RO drinking water", icon: "water", group: "Safety and care" },
   {
-    label: "Regular medical check-up",
+    label: "Regular medical check-ups",
     icon: "medical",
     group: "Safety and care",
   },
   { label: "School transport", icon: "transport", group: "Safety and care" },
 
   {
-    label: "Well trained and motivated staff",
+    label: "Well-trained and motivated staff",
     icon: "staff",
     group: "Learning",
   },
   { label: "Audio-visual activities", icon: "audioVisual", group: "Learning" },
-  { label: "Kids library", icon: "library", group: "Learning" },
+  { label: "Kids’ library", icon: "library", group: "Learning" },
   { label: "Computer facility", icon: "computer", group: "Learning" },
   { label: "Educational field trips", icon: "trips", group: "Learning" },
 
@@ -316,6 +328,10 @@ export const features = [
 /**
  * Draft messages, written from confirmed facts only, for Dr. Rekha Gupta and
  * Surender Mohan Gupta to edit or replace in their own words.
+ *
+ * The principal looks back over the years already behind the school, so her
+ * message says how far children have come rather than naming the class they
+ * reach. That keeps it true while the upper classes are still filling.
  */
 export const leadership = [
   {
@@ -326,7 +342,7 @@ export const leadership = [
     message: [
       "When a child walks through our gate for the first time, they are usually holding a parent’s hand very tightly. Our first job is not teaching at all. It is making that child feel safe enough to let go.",
       "Everything here is built around that. Our classrooms are bright and comfortable, children learn by doing rather than by copying, and we take the time to know each child by name and by nature.",
-      "Since 2017 we have watched hundreds of children grow from a hesitant first day in Play Group to reading and questioning their way through Class 5. It is a privilege, and we do not take it lightly.",
+      "Since 2017 we have watched hundreds of children grow from a hesitant first day in Play Group to reading and questioning their way up through the school. It is a privilege, and we do not take it lightly.",
       "Do come and visit us. A school is best understood by walking through it.",
     ],
   },
@@ -446,12 +462,12 @@ export const navLinks = [
  */
 export const vacancy = {
   active: true,
-  title: "Pre-Primary / Primary Teacher",
+  title: "Teacher",
   employmentType: "FULL_TIME",
   datePosted: "2026-09-30",
   closingDay: "2026-12-31",
   summary:
-    "A full-time post teaching our pre-primary and primary classes. We settle which of them you take once we have met you.",
+    "A full-time teaching post. We settle which classes you take once we have met you.",
 } as const;
 
 /**
@@ -474,7 +490,7 @@ export function vacancyOpen(on = new Date()) {
  */
 export const careers = {
   title: "Teach at Walnut Academy",
-  intro: `We teach children from Play Group to Class 5 in ${school.locality}, through activity and play rather than by rote.`,
+  intro: `We teach children from Play Group to Class 8 in ${school.locality}, through activity and play rather than by rote.`,
   openTo:
     "We are glad to hear from teachers at any time of year, whether or not a post is advertised.",
   sendHeading: "What to send",

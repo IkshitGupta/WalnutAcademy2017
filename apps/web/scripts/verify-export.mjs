@@ -11,9 +11,9 @@ import {
   moments,
   navLinks,
   prePrimary,
-  primary,
-  primaryLabel,
   school,
+  schoolClasses,
+  schoolClassesLabel,
   siteUrl,
   social,
   techniques,
@@ -223,10 +223,10 @@ const gallery = asText(sectionOf(seenIndex, "moments"));
 for (const stage of prePrimary) {
   expect(`class "${stage.name}"`, classes.includes(stage.name));
 }
-// Primary is shown as one stage naming its span, not as five separate classes,
-// so the label that renders is what gets asserted.
-expect(`class "${primaryLabel}"`, classes.includes(primaryLabel));
-expect("primary description", classes.includes(primary.body));
+// The numbered classes are shown as one stage naming their span, not as eight
+// separate classes, so the label that renders is what gets asserted.
+expect(`class "${schoolClassesLabel}"`, classes.includes(schoolClassesLabel));
+expect("classes description", classes.includes(schoolClasses.body));
 
 for (const area of learningAreas) {
   expect(`learning area "${area.title}"`, learning.includes(area.title));
@@ -247,6 +247,11 @@ for (const moment of moments) {
     attributes.includes(`alt="${moment.alt}"`),
   );
 }
+
+// The wall shows a handful of days, and a heading promising a year over ten
+// photographs would otherwise offer them as the whole of it. The line saying
+// there are more is what keeps the section an invitation rather than a list.
+expect("the gallery says more days than it shows", /many more/i.test(gallery));
 
 // Every destination the navigation offers, so a link cannot outlive the
 // section it points at.

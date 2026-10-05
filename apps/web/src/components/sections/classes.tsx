@@ -1,18 +1,22 @@
 import { Section } from "@/components/section";
-import { prePrimary, primary, primaryLabel } from "@/content/school";
+import {
+  prePrimary,
+  schoolClasses,
+  schoolClassesLabel,
+} from "@/content/school";
 
 /**
- * Primary closes the same progression as the pre-primary stages rather than
- * sitting in a panel of its own, so the whole path from Play Group to Class 5
- * reads as one sequence.
+ * The numbered classes close the same progression as the pre-primary stages
+ * rather than sitting in a panel of their own, so the whole path from Play
+ * Group to Class 8 reads as one sequence.
  */
 const stages = [
   ...prePrimary,
   {
-    name: primaryLabel,
-    colour: "var(--color-class-primary)",
+    name: schoolClassesLabel,
+    colour: "var(--color-class-numbered)",
     textColour: "var(--color-navy-deep)",
-    body: primary.body,
+    body: schoolClasses.body,
   },
 ];
 
@@ -33,8 +37,8 @@ export function Classes() {
       id="classes"
       tone="white"
       eyebrow="Classes"
-      title="Play Group through Class 5"
-      intro="Children join us at the very beginning and stay with us through the whole of their primary years."
+      title="Play Group through Class 8"
+      intro="Children join us at the very beginning and stay with us through the whole of their primary and middle years."
     >
       {/* The stages are a path, not a set. The rule carries the eye across them
           in order; on a phone the same rule runs down the left instead. */}

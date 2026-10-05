@@ -41,6 +41,15 @@ export function Moments() {
           </li>
         ))}
       </ul>
+
+      {/* The photographs are a sample rather than the whole year. This runs the
+          full width beneath them, set off by the same hairline the tiles keep
+          between themselves, so it reads as the wall carrying on rather than as
+          a remark set apart from it. The words are dark, so a sheet printed
+          without background graphics still carries them. */}
+      <p className="mt-1 px-4 py-3 text-center font-heading text-sm font-bold text-magenta-deep sm:px-6 sm:text-base">
+        …and many more through the year
+      </p>
     </Section>
   );
 }

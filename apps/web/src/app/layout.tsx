@@ -4,7 +4,7 @@ import { AnnouncementBar } from "@/components/announcement-bar";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { MobileActionBar } from "@/components/mobile-action-bar";
-import { contact, school, siteUrl, social, stats } from "@/content/school";
+import { contact, school, siteUrl, social } from "@/content/school";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -20,7 +20,7 @@ const inter = Inter({
   display: "swap",
 });
 
-const description = `${school.name} is an English medium school in ${school.locality}, teaching children from Play Group to Class 5 through activity-based, play-way learning. Established ${school.established}.`;
+const description = `${school.name} is an English medium school in ${school.locality}, teaching children from Play Group to Class 8 through activity-based, play-way learning. Established ${school.established}.`;
 
 // Most people meet a link to this site pasted into a message rather than in a
 // search result, where the picture is most of what they see before deciding
@@ -45,6 +45,7 @@ export const metadata: Metadata = {
     "play group Mansarovar",
     "nursery admission Mansarovar",
     "primary school Mansarovar Jaipur",
+    "middle school Mansarovar Jaipur",
     "Walnut Academy",
   ],
   openGraph: {
@@ -78,7 +79,10 @@ const structuredData = {
   address: { "@type": "PostalAddress", ...contact.postalAddress },
   geo: { "@type": "GeoCoordinates", ...contact.geo },
   areaServed: { "@type": "City", name: "Jaipur" },
-  numberOfStudents: stats.find((stat) => stat.label === "Students")?.value,
+  // Held back with the stats section, so the figure is not handed to search
+  // engines while it is off the page. Restoring it needs `stats` returned to
+  // the import above.
+  // numberOfStudents: stats.find((stat) => stat.label === "Students")?.value,
   parentOrganization: { "@type": "Organization", name: school.society },
   sameAs: social.map((profile) => profile.href),
   openingHoursSpecification: {
