@@ -1,6 +1,7 @@
 import { Crest, Mascot } from "@walnut/ui";
+import { FooterNav } from "@/components/footer-nav";
 import { SocialIcon } from "@/components/social-icon";
-import { contact, navLinks, school, social } from "@/content/school";
+import { contact, school, social } from "@/content/school";
 
 const columnHeading =
   "font-heading text-sm font-bold tracking-wide text-white uppercase";
@@ -55,46 +56,28 @@ export function SiteFooter() {
                   </span>
                 ))}
               </span>
+              {/* The lines above are an address and these two are ways of
+                  getting in touch, which is a difference the reader can only
+                  see if the ones that go somewhere are marked. */}
               <a
                 href={contact.phoneHref}
-                className="block font-heading font-bold text-white transition-colors hover:text-gold"
+                className="block font-heading font-bold text-white underline underline-offset-4 transition-colors hover:text-gold"
               >
                 {contact.phoneDisplay}
               </a>
               <a
                 href={`mailto:${contact.email}`}
-                className="block [overflow-wrap:anywhere] transition-colors hover:text-white"
+                className="block [overflow-wrap:anywhere] underline underline-offset-4 transition-colors hover:text-white"
               >
                 {contact.email}
               </a>
             </address>
           </div>
 
-          <nav aria-label="Footer">
-            <h2 className={columnHeading}>Explore</h2>
-            <ul className="mt-4 grid grid-cols-2 gap-x-10 gap-y-2.5 text-sm">
-              {navLinks.map((link) => (
-                <li key={link.href}>
-                  <a
-                    href={link.href}
-                    className="transition-colors hover:text-white"
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-              <li>
-                <a
-                  href="/careers/"
-                  className="transition-colors hover:text-white"
-                >
-                  Teaching jobs
-                </a>
-              </li>
-            </ul>
-          </nav>
+          <FooterNav />
 
-          {/* The page closes on the mascot rather than on small print. */}
+          {/* Where there is room beside the columns, the page closes on the
+              mascot rather than on small print. */}
           <Mascot className="hidden h-32 w-32 shrink-0 self-end sm:block sm:justify-self-end" />
         </div>
 

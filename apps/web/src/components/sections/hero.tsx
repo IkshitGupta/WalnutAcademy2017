@@ -43,7 +43,7 @@ export function Hero() {
             on screen for the whole page. The stretch of facade between the roof
             board and the awning is clear of lettering, which is where this
             sits. */}
-        <div className="relative z-10 px-4 pt-12 pb-14 text-center sm:px-6 sm:pt-14 sm:pb-16 lg:absolute lg:inset-x-0 lg:top-[28%] lg:py-0">
+        <div className="hero-heading relative z-10 px-4 pt-6 pb-10 text-center sm:px-6 sm:pt-14 sm:pb-16 lg:absolute lg:inset-x-0 lg:top-[28%] lg:py-0">
           <h1 className="hero-title text-4xl font-extrabold text-white sm:text-6xl lg:text-7xl">
             {school.name}
           </h1>
@@ -56,9 +56,9 @@ export function Hero() {
       {/* Lifted onto the frame rather than set below it, so the page has one
           place where something sits in front of something else. From lg only:
           below that the heading occupies the space this would overlap. */}
-      <div className="relative bg-cream pt-6 pb-6 lg:pt-0">
+      <div className="relative bg-cream pt-4 pb-4 sm:pt-6 sm:pb-6 lg:pt-0">
         <div className="mx-auto flow-root max-w-6xl px-4 sm:px-6">
-          <div className="relative lg:-mt-14">
+          <div className="hero-facts relative lg:-mt-14">
             {/* Set behind the card so only its head and shoulders clear the
                 edge, and mirrored so it looks in towards the facts rather than
                 off the side of the page. */}
@@ -73,7 +73,7 @@ export function Hero() {
                   />
                 ))}
               </div>
-              <ul className="grid gap-x-6 gap-y-4 px-4 py-5 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
+              <ul className="grid gap-x-6 gap-y-3 px-4 py-4 sm:grid-cols-2 sm:gap-y-4 sm:px-6 sm:py-5 lg:grid-cols-4">
                 {quickFacts.map((fact) => {
                   const Icon = icons[fact.icon];
                   return (

@@ -34,7 +34,7 @@ export function Classes() {
       tone="white"
       eyebrow="Classes"
       title="Play Group through Class 5"
-      intro="Children join us at the very beginning and stay with us through the whole of their primary years. Classes stay small enough that every child is known by name."
+      intro="Children join us at the very beginning and stay with us through the whole of their primary years."
     >
       {/* The stages are a path, not a set. The rule carries the eye across them
           in order; on a phone the same rule runs down the left instead. */}
@@ -55,15 +55,32 @@ export function Classes() {
       </div>
 
       <ol className="relative grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <span
-          aria-hidden
-          className="absolute top-6 bottom-6 left-[11px] w-0.5 bg-navy/15 sm:hidden"
-        />
-        {stages.map((stage) => (
+        {stages.map((stage, index) => (
           <li key={stage.name} className="relative pl-8 sm:pl-0">
+            {/* The mark sits on the middle of the panel it belongs to, so the
+                line is drawn in halves: the lower half of one panel and the
+                upper half of the next. Two marks are then joined however tall
+                either panel happens to be, and the path still stops at the last
+                stage rather than trailing past it. Each stretch between two
+                marks carries the colour of the stage it leaves, so the spine
+                changes as a child moves up the school. */}
+            {index > 0 ? (
+              <span
+                aria-hidden
+                className="absolute top-0 bottom-1/2 left-[11px] w-0.5 sm:hidden"
+                style={{ backgroundColor: stages[index - 1].colour }}
+              />
+            ) : null}
+            {index < stages.length - 1 ? (
+              <span
+                aria-hidden
+                className="absolute top-1/2 -bottom-4 left-[11px] w-0.5 sm:hidden"
+                style={{ backgroundColor: stage.colour }}
+              />
+            ) : null}
             <span
               aria-hidden
-              className="absolute top-6 left-[6px] h-3 w-3 rounded-full ring-4 ring-white sm:hidden"
+              className="absolute top-1/2 left-[6px] -mt-1.5 h-3 w-3 rounded-full ring-4 ring-white sm:hidden"
               style={{ backgroundColor: stage.colour }}
             />
             <div

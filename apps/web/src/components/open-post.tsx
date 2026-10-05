@@ -58,7 +58,7 @@ export function OpenPost({ builtOpen }: { builtOpen: boolean }) {
       <h2 className="mt-2 font-heading text-2xl font-extrabold">
         {vacancy.title}
       </h2>
-      <p className="mt-3 max-w-2xl leading-relaxed text-ink">
+      <p className="mt-2.5 max-w-2xl leading-relaxed text-ink">
         {vacancy.summary}
       </p>
       <p className="mt-4 text-sm text-ink-soft">

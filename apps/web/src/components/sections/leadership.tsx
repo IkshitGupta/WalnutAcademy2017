@@ -1,4 +1,5 @@
 import { Section } from "@/components/section";
+import { MessageFold } from "@/components/message-fold";
 import { leadership } from "@/content/school";
 
 /** Sits beneath the name, so it stays quieter than the name above it. */
@@ -42,9 +43,10 @@ export function Leadership() {
             </div>
 
             <div className="col-span-2 space-y-4 leading-relaxed text-ink lg:col-span-1">
-              {person.message.map((paragraph) => (
-                <p key={paragraph.slice(0, 32)}>{paragraph}</p>
-              ))}
+              <p>{person.message[0]}</p>
+              {person.message.length > 1 ? (
+                <MessageFold paragraphs={person.message.slice(1)} />
+              ) : null}
             </div>
           </article>
         ))}

@@ -18,7 +18,7 @@ export function Moments() {
       intro="Festivals, national days, competitions and a few of the school’s own, all of them reasons for children to take part rather than watch."
       bleed
     >
-      <div className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
+      <div className="mx-auto max-w-6xl px-4 pb-5 sm:px-6">
         <Bunting className="h-14 w-full sm:h-16" />
       </div>
 
@@ -35,7 +35,7 @@ export function Moments() {
               loading="lazy"
               className="block aspect-[4/3] w-full object-cover"
             />
-            <p className="moment-caption absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-3 pt-8 pb-2 font-heading text-xs font-bold text-white sm:text-sm">
+            <p className="moment-caption absolute inset-x-0 bottom-0 px-3 pt-8 pb-2 font-heading text-xs font-bold text-white sm:text-sm">
               {moment.caption}
             </p>
           </li>

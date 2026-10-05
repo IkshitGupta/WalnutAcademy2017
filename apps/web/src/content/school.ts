@@ -493,3 +493,14 @@ export const careers = {
   close:
     "We read everything that reaches us, and we get in touch with the teachers we would like to meet.",
 } as const;
+
+/**
+ * Built once rather than at each place that offers them. The careers page and
+ * the bar pinned to the foot of a phone both send an applicant to WhatsApp,
+ * and an application is recognisable in the inbox only while whichever one was
+ * tapped opens the same message.
+ */
+export const careersHref = {
+  mail: `mailto:${contact.email}?subject=${encodeURIComponent(careers.mailSubject)}`,
+  whatsapp: `${contact.whatsappHref}?text=${encodeURIComponent(careers.whatsappMessage)}`,
+} as const;

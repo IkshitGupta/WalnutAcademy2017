@@ -5,13 +5,25 @@
   in the mark; magenta carries over from the printed prospectus and is reserved
   for pre-primary touches. Class colours are inherited from the prospectus,
   which already colour-codes each programme.
+
+  The pale surfaces are a ladder rather than a set: white, then cream, then the
+  two accents a step below both. A join between two bands therefore carries a
+  difference in lightness as well as in hue, so it still reads where colour
+  does not survive, as on a page that has been printed.
 */
 @theme {
   --color-navy: #304890;
   --color-navy-deep: #1e2f5c;
   --color-navy-soft: #e8edf8;
   --color-gold: #ffc93c;
-  --color-gold-soft: #fff3d4;
+  --color-gold-soft: #f3e7ca;
+  /* The same gold carried at the size of a small mark. A band fills the width
+     of the page and separates from cream on area alone; a tile a few pixels
+     across has to do it on colour, and the band gold shares cream's warm
+     family closely enough that it reads as part of the surface. Lightness is
+     held at the band gold's, so the ladder above is unchanged and the extra
+     separation comes from chroma. */
+  --color-gold-tile: #f8e8aa;
   --color-whatsapp: #25d366;
   /* No utility uses these two, so Tailwind drops them before the browser sees
      them. They stay because they are the palette's record of two colours the
@@ -21,10 +33,17 @@
   --color-brand-red: #c8102e;
   --color-magenta: #d81b76;
   --color-magenta-deep: #a01458;
-  --color-magenta-soft: #fce7f1;
-  --color-cream: #fffdf7;
+  --color-magenta-soft: #f3dfe8;
+  /* Deep enough to read as a change of surface where a cream section meets a
+     white one, so the join between two sections is carried by the page itself
+     rather than by the space between them. */
+  --color-cream: #f9f4e6;
   --color-ink: #334155;
-  --color-ink-soft: #5b6b80;
+  /* The muted ink sets the floor for every pale band: a band may only be as
+     deep as this colour can still be read on. Dark enough here to clear AA on
+     all four with room to spare, which is what lets the accents sit a step
+     below the neutrals. */
+  --color-ink-soft: #52606f;
 
   --color-class-playgroup: #29a7e1;
   --color-class-nursery: #ef6c33;
@@ -118,8 +137,61 @@
      written into the markup, so the one guarding the palette does not have to
      treat a shadow as a brand colour. */
   .moment-caption {
+    /* The veil reached full strength at the foot of the box, which is padding,
+       and had begun to fade by the line of text above it. It is held at full
+       strength across the band the words occupy and fades from there, so the
+       darkest value is the one it always was and no photograph is dimmed
+       further than it already was. */
+    background-image: linear-gradient(
+      to top,
+      rgb(0 0 0 / 0.75) 0,
+      rgb(0 0 0 / 0.75) 2.25rem,
+      transparent 100%
+    );
     text-shadow: 0 1px 3px rgb(0 0 0 / 0.7);
   }
+
+  /* A message is folded after its opening paragraph where the two of them
+     would otherwise stack into a wall. */
+  .message-fold > summary {
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .message-fold > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* The control says what pressing it will do, so it changes with the state it
+     is in. Both words stay in the page, and the element itself carries the
+     open or shut state to anything listening. */
+  .message-fold:not([open]) > summary .fold-open,
+  .message-fold[open] > summary .fold-shut {
+    display: none;
+  }
+
+  /* Opened, the control belongs after the words it revealed, which is where
+     the reader arrives having read them. The markup keeps it first, as the
+     element requires, and the order is a matter of layout only. */
+  .message-fold {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* The gap separates the control from the words it reveals, so it applies
+     once both are on the page. */
+  .message-fold[open] {
+    gap: 1rem;
+  }
+
+  .message-fold[open] > summary {
+    order: 1;
+  }
+
+  /* The wider layout sets each message beside its portrait and has the room,
+     so there the stylesheet opens the fold and takes its control away. Both
+     halves of that sit outside the layers, below, where a utility on the
+     control cannot win against them. */
 
   /* A halo easing outwards from the announcement dot. Slow and low-contrast so
      it reads as a sign of life rather than as something demanding attention.
@@ -135,6 +207,34 @@
    otherwise win, and an advert for a post that has closed would be back. */
 [data-post-closed] .open-post {
   display: none;
+}
+
+/* Taking the fold's control away is only safe where the words are opened by
+   the rule beside it, so the two are asked for together under one condition.
+   Anywhere `::details-content` is not understood, the control stays and every
+   word stays reachable; held apart, with the control hidden by a utility and
+   the words opened here, Safari before 18.4 and Firefox before 143 shut the
+   words and left nothing to open them.
+
+   Paper is asked for as well as the wider screen. A sheet in portrait is
+   narrower than the width below, so the messages were going to the printer
+   shut, with a control on them that a reader cannot press.
+
+   Outside the layers for the same reason as the rule above: the control
+   carries a `flex` utility, which would otherwise win. The width matches the
+   one the messages take their side-by-side layout at, so the control goes
+   only where the portrait beside it has made the room. */
+@media print, (width >= 64rem) {
+  @supports selector(::details-content) {
+    .message-fold::details-content {
+      content-visibility: visible;
+      block-size: auto;
+    }
+
+    .message-fold > summary {
+      display: none;
+    }
+  }
 }
 
 @keyframes admission-halo {
@@ -160,5 +260,68 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  /* A printer is not asked for background colour, and browsers leave it out
+     unless the reader goes looking for the setting. A band that sets its words
+     in white therefore hands over a blank space where the address, the phone
+     number and the timings should be. On paper the bands step aside and every
+     word takes the page's own ink. */
+  [class*="bg-navy"],
+  [class*="bg-navy"] * {
+    background-color: transparent !important;
+    color: var(--color-ink) !important;
+    text-shadow: none !important;
+  }
+
+  [class*="bg-navy"] :is(h1, h2, h3) {
+    color: var(--color-navy-deep) !important;
+  }
+
+  /* A panel that was told apart by a fill needs an outline once the fill is
+     gone. */
+  [class*="bg-navy"][class*="rounded"],
+  [class*="bg-navy"] [class*="rounded"] {
+    border: 1px solid rgb(51 65 85 / 0.3) !important;
+  }
+
+  /* The photograph prints, but the heading is lifted onto it only where the
+     layout has the width to spare. On paper it keeps its own room beneath. */
+  .hero-heading {
+    position: static !important;
+    padding-block: 1.5rem !important;
+  }
+
+  .hero-veil {
+    display: none !important;
+  }
+
+  /* The facts are drawn up over the foot of the heading where the heading sits
+     on the photograph. Once it has stepped off, that lift would carry them
+     over the tagline instead. */
+  .hero-facts {
+    margin-top: 0 !important;
+  }
+
+  /* A caption is white on a veil, and a sheet printed without background
+     graphics loses the veil and keeps the white. Asking for the colour to be
+     honoured keeps the two together: either both reach the paper or neither
+     does, and the words never arrive white on white. */
+  .moment-caption {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Chrome that follows the reader down a screen has nothing to follow on a
+     sheet, and would print over the words it sits above. */
+  header {
+    position: static !important;
+    box-shadow: none !important;
+  }
+
+  :is(h1, h2, h3) {
+    break-after: avoid;
   }
 }

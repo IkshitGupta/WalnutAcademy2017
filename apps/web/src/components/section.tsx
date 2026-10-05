@@ -23,9 +23,9 @@ const eyebrowTone = {
  * vertical recipe: a list of facts does not need the room an essay does.
  */
 const densities = {
-  compact: { pad: "py-8 sm:py-10", gap: "mt-6" },
-  default: { pad: "py-10 sm:py-12", gap: "mt-8" },
-  spacious: { pad: "py-12 sm:py-16", gap: "mt-10" },
+  compact: { pad: "py-6 sm:py-8", gap: "mt-6" },
+  default: { pad: "py-8 sm:py-10", gap: "mt-8" },
+  spacious: { pad: "py-10 sm:py-12", gap: "mt-10" },
 } as const;
 
 type SectionProps = {
@@ -98,7 +98,7 @@ export function Section({
   return (
     <section id={id} className={tones[tone]}>
       <div
-        className={`mx-auto max-w-6xl px-4 sm:px-6 ${bleed ? "pt-10 pb-8 sm:pt-12" : pad}`}
+        className={`mx-auto max-w-6xl px-4 sm:px-6 ${bleed ? "pt-8 pb-6 sm:pt-10" : pad}`}
       >
         <div
           className={

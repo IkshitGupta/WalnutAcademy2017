@@ -5,6 +5,7 @@ import { OpenPost } from "@/components/open-post";
 import { Section } from "@/components/section";
 import {
   careers,
+  careersHref,
   contact,
   school,
   siteUrl,
@@ -79,13 +80,9 @@ const jobPosting = {
   },
 };
 
-const mailHref = `mailto:${contact.email}?subject=${encodeURIComponent(
-  careers.mailSubject,
-)}`;
+const mailHref = careersHref.mail;
 
-const whatsappHref = `${contact.whatsappHref}?text=${encodeURIComponent(
-  careers.whatsappMessage,
-)}`;
+const whatsappHref = careersHref.whatsapp;
 
 export default function CareersPage() {
   return (
@@ -129,7 +126,10 @@ export default function CareersPage() {
         <ul className="mt-4 grid gap-x-10 gap-y-3 sm:grid-cols-2">
           {careers.send.map((item) => (
             <li key={item} className="flex items-start gap-3">
-              <Check className="mt-1 h-5 w-5 shrink-0 text-navy" aria-hidden />
+              <Check
+                className="mt-0.5 h-5 w-5 shrink-0 text-navy"
+                aria-hidden
+              />
               <span className="text-ink">{item}</span>
             </li>
           ))}
@@ -181,7 +181,7 @@ export default function CareersPage() {
             <dd>
               <a
                 href={contact.phoneHref}
-                className="font-semibold text-white underline-offset-4 hover:underline"
+                className="font-semibold text-white underline underline-offset-4"
               >
                 {contact.phoneDisplay}
               </a>

@@ -112,9 +112,11 @@ Three layers, all run in CI:
 
 - **`pnpm test:e2e`** runs Playwright against the built export rather than the
   dev server, on a mobile and a desktop viewport. Covers the areas that static
-  checks cannot reach: the mobile menu (full-viewport overlay, focus handling,
-  Escape, focus restoration, holding the reader's place, and every item being
-  reachable on a short screen), the call bar staying pinned to the bottom of
+  checks cannot reach: the mobile menu (the panel hanging from the header over
+  a dimmed page, focus handling, Escape, focus restoration, holding the
+  reader's place, holding the page it covers out of reach without hiding the
+  control that closes it, and every item being reachable on a short screen),
+  the call bar staying pinned to the bottom of
   the screen, anchor navigation including a second press of the same link, the
   Back button after a jump to a section, that the way to reach the school is
   actually on screen at both sizes rather than merely present in the markup,
@@ -123,12 +125,48 @@ Three layers, all run in CI:
   than by the browser. The rule itself is enforced by a lint rule banning the
   `next/link` import, since a test only sees a link it thought to look for.
 
+  A later group covers how the page looks rather than how it behaves, because
+  the claims the stylesheet makes about itself were going unchecked. These
+  assert that every word clears AA against the colour behind it, that
+  neighbouring bands differ in lightness as well as hue so the page survives
+  being printed or rendered without colour, that the marks telling the
+  facilities groups apart each separate from the surface they sit on and from
+  each other, that the sentences a phone does not show are still there for one
+  reading the page aloud, and that a mark set beside a line of text keeps to
+  that line at every width down to 320px.
+
+  One of them is written as a rule rather than as a measurement. A caption is
+  white type on a photograph, and no photograph can be read from the
+  stylesheet, so what is checked is the veil between: that it runs upwards from
+  the foot of the caption, that it is opaque enough for white to clear AA even
+  over a pure white picture, and that every glyph sits inside the part of it
+  that has not begun to fade. The threshold is worked out from the contrast
+  formula inside the test rather than written down, so it cannot drift away
+  from the rule it came from, and the result holds for any photograph the
+  school puts behind a caption rather than only for the ten there now.
+
+  This replaced a test that sampled the pixels the browser actually paints. It
+  did find the original fault, but it was the slowest in the suite, it proved
+  the point only for the pictures currently in the page, and getting it right
+  needed two corrections: a full-page screenshot scrolls the page, the header
+  shortens when it does, and everything below shifts by enough to miss a band
+  of text that thin.
+
 Several of these exist because of a specific bug, and each is written to fail
 against that bug rather than around it.
 
 `backdrop-filter` on the header creates a containing block, which scoped the
-menu's `fixed` overlay to the 80px header instead of the viewport. The
-assertion on the overlay's height catches that class of regression.
+dimming behind the menu to the 80px header instead of the viewport. The
+assertion on its height catches that class of regression.
+
+The menu is a panel inside the header rather than a dialog, and the control
+that closes it stays in the header, outside the panel, by design. Marking the
+panel `aria-modal` therefore withheld the only way out from a screen reader
+while leaving it on screen for everyone else. What the page gives up instead is
+reach: everything the dimming covers is made `inert` while the menu is open,
+which is the same promise enforced by the browser rather than asserted to
+assistive technology. A test holds both halves of that — the page beyond reach,
+the way out still within it.
 
 The room left for the pinned header used to be set on the scrolling page
 itself, which meant the browser held that space for anything it brought into

@@ -28,8 +28,13 @@ export function Visit() {
             you around during office hours.
           </p>
 
-          <p className="mt-4 inline-flex items-center gap-2 self-start rounded-full bg-gold/15 px-4 py-2 text-sm font-semibold text-gold">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold" aria-hidden />
+          <p className="mt-4 inline-flex items-start gap-2 self-start rounded-full bg-gold/15 px-4 py-2 text-sm font-semibold text-gold">
+            {/* The dot keeps to the first line. Centred on the whole chip, it
+                dropped into the space between the lines wherever the note ran
+                to two. */}
+            <span className="flex h-5 shrink-0 items-center" aria-hidden>
+              <span className="h-1.5 w-1.5 rounded-full bg-gold" />
+            </span>
             <AdmissionNote buildSession={session} />
           </p>
 
@@ -54,7 +59,15 @@ export function Visit() {
           {/* An ordinary link: as a full-width button the address broke
               mid-word at narrow widths. */}
           <p className="mt-auto flex flex-wrap items-center gap-2 pt-5 text-sm text-white/60">
-            <Mail className="h-4 w-4 shrink-0 text-gold" aria-hidden />
+            {/* The address is as long as the narrowest panel can hold, so the
+                mark beside it stands down where it would push the address onto
+                a line of its own and leave itself stranded above. The width is
+                in the same unit as the text it is making room for, so a reader
+                who has set a larger default size moves the two together. */}
+            <Mail
+              className="hidden h-4 w-4 shrink-0 text-gold min-[21rem]:block"
+              aria-hidden
+            />
             <a
               href={`mailto:${contact.email}`}
               className="[overflow-wrap:anywhere] text-white/85 underline underline-offset-4 hover:text-white"

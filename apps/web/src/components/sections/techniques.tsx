@@ -12,17 +12,18 @@ export function Techniques() {
       aside={<Crest title={null} className="h-44 w-44" />}
     >
       {/* The five carry equal weight and map to the five stars on the crest, so
-          a star marks each one. */}
+          a star marks each one. A rule divides one from the next, so the last
+          carries none: there is nothing after it to divide it from. */}
       <ul className="border-t border-navy/10">
         {techniques.map((technique) => (
           <li
             key={technique.title}
-            className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-4 border-b border-navy/10 py-5"
+            className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-4 border-b border-navy/10 py-5 last:border-b-0 last:pb-0"
           >
-            <Star className="mt-1.5 h-5 w-5 text-navy" />
+            <Star className="mt-1 h-5 w-5 text-navy" />
             <div>
               <h3 className="text-xl font-extrabold">{technique.title}</h3>
-              <p className="mt-1 leading-relaxed text-ink-soft xl:text-lg">
+              <p className="mt-2 leading-relaxed text-ink-soft xl:text-lg">
                 {technique.body}
               </p>
             </div>

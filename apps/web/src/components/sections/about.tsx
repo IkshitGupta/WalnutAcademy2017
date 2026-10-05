@@ -1,6 +1,6 @@
 import { Crest } from "@walnut/ui";
 import { Section } from "@/components/section";
-import { classroom, mission, story } from "@/content/school";
+import { classroom, mission, school, story } from "@/content/school";
 
 const [opening, ...rest] = story;
 
@@ -26,11 +26,18 @@ export function About() {
           width={900}
           height={596}
           loading="lazy"
-          className="w-full rounded-3xl shadow-lg ring-1 ring-navy/10"
+          /* Pulled out to the edges by the width of the section's own padding,
+             rather than by the width of the window, which would reach past the
+             page wherever a scrollbar is taking room of its own. */
+          className="-mx-4 w-[calc(100%+2rem)] max-w-none rounded-none shadow-none ring-0 sm:-mx-6 sm:w-[calc(100%+3rem)] lg:mx-0 lg:w-full lg:rounded-3xl lg:shadow-lg lg:ring-1 lg:ring-navy/10"
         />
 
         <div className="space-y-5 text-lg leading-relaxed text-ink">
-          <p className="first-letter:float-left first-letter:mt-1 first-letter:mr-3 first-letter:font-heading first-letter:text-[3.25rem] first-letter:leading-[0.8] first-letter:font-extrabold first-letter:text-magenta-deep">
+          {/* The raised letter needs a line long enough to sit beside without
+              taking much of it. Narrower than the two-column layout, it indents
+              a fifth of every line it touches, so the opening paragraph leads
+              on weight instead. */}
+          <p className="text-xl font-semibold text-navy-deep lg:text-lg lg:font-normal lg:text-ink lg:first-letter:float-left lg:first-letter:mt-1 lg:first-letter:mr-3 lg:first-letter:font-heading lg:first-letter:text-[3.25rem] lg:first-letter:leading-[0.8] lg:first-letter:font-extrabold lg:first-letter:text-magenta-deep">
             {opening}
           </p>
           {rest.map((paragraph) => (
@@ -40,9 +47,11 @@ export function About() {
       </div>
 
       <figure className="relative mx-auto mt-12 max-w-3xl text-left md:mt-16 md:text-center lg:mt-16">
+        {/* Held back on a narrow screen, where the mark is most of the width
+            the words have and its lettering reads through between the lines. */}
         <Crest
           title={null}
-          className="pointer-events-none absolute top-1/2 left-1/2 h-60 w-60 -translate-x-1/2 -translate-y-1/2 opacity-[0.05] grayscale"
+          className="pointer-events-none absolute top-1/2 left-1/2 hidden h-60 w-60 -translate-x-1/2 -translate-y-1/2 opacity-[0.05] grayscale md:block"
         />
         <span
           aria-hidden
@@ -50,12 +59,14 @@ export function About() {
         >
           &ldquo;
         </span>
-        <blockquote className="relative -mt-3 font-heading text-xl leading-relaxed font-semibold text-navy-deep sm:text-[1.375rem]">
+        <blockquote className="relative -mt-3 font-heading text-[1.0625rem] leading-relaxed font-medium text-navy-deep sm:text-[1.375rem] sm:font-semibold">
           {mission}
-          <span aria-hidden className="text-navy/30">
-            &rdquo;
-          </span>
         </blockquote>
+        {/* Closes the quote and says who is speaking, which the mark it
+            replaces did at a fraction of the size of its opening pair. */}
+        <figcaption className="relative mt-4 font-heading text-xs font-bold tracking-[0.14em] text-ink-soft uppercase">
+          {school.name}
+        </figcaption>
       </figure>
     </Section>
   );
