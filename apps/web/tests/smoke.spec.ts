@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
+  admissions,
+  affiliationClaim,
   boardClaim,
   careers,
   contact,
@@ -30,6 +32,25 @@ async function restingScroll(page: Page) {
     .toBe(true);
   return last;
 }
+
+/**
+ * Waits for the page to come alive. The served file already carries what the
+ * build decided, so anything read before React has taken the page over is a
+ * reading of the build rather than of what the visitor is shown.
+ *
+ * The page having been claimed is not the same as its effects having run. Read
+ * on that signal alone it came back with the built-in value about once in
+ * twenty, and a frame and a turn later was only a better guess: with the work
+ * React does between the two held up, the wait still ended before a single
+ * listener had been installed. The header marks the document once its own
+ * effects have run, and a commit's effects run together, so that mark is the
+ * page itself saying it is ready rather than this guessing at how long ready
+ * takes.
+ */
+const awake = (page: Page) =>
+  page.waitForFunction(
+    () => document.documentElement.dataset.ready !== undefined,
+  );
 
 test("loads without console errors", async ({ page }) => {
   const errors: string[] = [];
@@ -72,7 +93,7 @@ test("makes no board affiliation claim", async ({ page }) => {
     await page.goto(route);
     const visible = await page.evaluate(() => document.body.innerText);
     expect(visible, route).not.toMatch(boardClaim);
-    expect(visible, route).not.toMatch(/affiliat/i);
+    expect(visible, route).not.toMatch(affiliationClaim);
   }
 
   await page.goto("/");
@@ -81,26 +102,67 @@ test("makes no board affiliation claim", async ({ page }) => {
   );
 });
 
-test("the admissions line names an academic session", async ({ page }) => {
+test("the admissions line names the session the school set", async ({
+  page,
+}) => {
   await page.goto("/");
   const lines = page.getByText(/^Admissions open for/);
+
+  // The bar at the top and the chip in the Visit panel.
   await expect(lines).toHaveCount(2);
   for (const line of await lines.all()) {
-    await expect(line).toHaveText(/^Admissions open for 20\d\d–\d\d$/);
+    await expect(line).toHaveText(`${admissions.label} ${admissions.session}`);
   }
 });
 
-// Admissions for a session open in the November before it begins. These files
-// are built once and may serve for years, so the session follows the visitor's
-// clock and the built-in value only has to hold until the page hydrates.
-test("the admissions session follows the date, not the build", async ({
+// The session is the school's to set and not the calendar's. It was worked out
+// from the date on the reading that admissions open each November, which
+// nobody had confirmed, so the line changed what it claimed on a date the
+// school had not chosen.
+//
+// Every line is read, not the first of them. Asked only of the first, a chip
+// that had gone back to working the session out for itself went unseen: the
+// bar said 2026–27 while the chip beneath it said 2031–32, which is the very
+// fault this is here to catch. Each is read once the page is awake, because
+// the served file carries what the build decided and a date creeping back in
+// would be written over it a moment later.
+test("the admissions line reads the same at any date and in any country", async ({
   page,
+  browser,
 }) => {
-  await page.clock.setFixedTime(new Date("2031-11-04T09:00:00+05:30"));
-  await page.goto("/");
-  await expect(page.getByText(/^Admissions open for/).first()).toHaveText(
-    "Admissions open for 2032–33",
-  );
+  const expected = `${admissions.label} ${admissions.session}`;
+
+  const readEveryLine = async (on: Page, where: string) => {
+    await awake(on);
+    const lines = on.getByText(/^Admissions open for/);
+    await expect(lines, where).toHaveCount(2);
+    for (const line of await lines.all()) {
+      await expect(line, where).toHaveText(expected);
+    }
+  };
+
+  for (const instant of [
+    "2026-10-31T18:29:00Z",
+    "2026-10-31T18:30:00Z",
+    "2027-06-15T06:00:00Z",
+    "2031-01-01T00:00:00Z",
+  ]) {
+    await page.clock.setFixedTime(new Date(instant));
+    await page.goto("/");
+    await readEveryLine(page, `at ${instant}`);
+  }
+
+  for (const timezoneId of ["Asia/Kolkata", "America/Los_Angeles"]) {
+    const context = await browser.newContext({
+      timezoneId,
+      baseURL: page.url().slice(0, page.url().indexOf("/", 8)),
+    });
+    const elsewhere = await context.newPage();
+    await elsewhere.clock.setFixedTime(new Date("2026-10-31T18:35:00Z"));
+    await elsewhere.goto("/");
+    await readEveryLine(elsewhere, `read in ${timezoneId}`);
+    await context.close();
+  }
 });
 
 // Both stay pinned: the admissions line is the message the school most wants
@@ -534,6 +596,211 @@ test("no message is left shut with nothing to open it", async ({ page }) => {
       ).toBe(true);
     }
   }
+});
+
+// Paper has no way of pressing a control, so the stylesheet opens the folds
+// for it. That rests on `::details-content`, and where a browser has not got
+// it the same sheet came out with both messages shut and a "Read more" on it
+// that nobody can press: 0 of 5 paragraphs reached the page. The compatibility
+// check above only asks about the screen, where the control is still there to
+// press, so it had nothing to say about this.
+test("a browser without the opener still prints every message", async ({
+  page,
+}) => {
+  // What such a browser answers when the page asks whether it has it.
+  await page.addInitScript(() => {
+    const real = CSS.supports.bind(CSS);
+    CSS.supports = ((condition: string, value?: string) =>
+      condition.includes("details-content")
+        ? false
+        : value === undefined
+          ? real(condition)
+          : real(condition, value)) as typeof CSS.supports;
+  });
+
+  await page.setViewportSize({ width: 718, height: 1000 });
+  await page.goto("/");
+
+  // This browser does have the opener, so the rules that rest on it are put
+  // back to what one without it would do: a shut fold stays shut and keeps its
+  // control. The control is restored for every fold, not only the shut ones,
+  // because the real rule hides it on all of them in print — which left the
+  // count of unpressable controls below unable to rise above zero whatever the
+  // page did.
+  await page.addStyleTag({
+    content: `@media print {
+      .message-fold:not([open])::details-content {
+        content-visibility: hidden !important;
+        block-size: 0 !important;
+      }
+      .message-fold > summary { display: flex !important; }
+    }`,
+  });
+
+  const folded = await page.locator(".message-fold").count();
+  expect(folded, "messages folded on the screen").toBeGreaterThan(0);
+  const shutBefore = await page.locator(".message-fold[open]").count();
+
+  // The fallback is installed when the page comes alive, so asking for paper
+  // before that would be asking a page that has not yet had the chance.
+  await awake(page);
+
+  await page.emulateMedia({ media: "print" });
+
+  const totalFolded = await page.evaluate(
+    () =>
+      [...document.querySelectorAll(".message-fold")].flatMap((fold) => [
+        ...fold.querySelectorAll("p"),
+      ]).length,
+  );
+  expect(totalFolded, "folded paragraphs").toBeGreaterThan(0);
+
+  // Asking for paper reaches the fallback on its own turn, so this is polled
+  // rather than read once. Read immediately, the page still shows the sheet
+  // the reader was about to lose.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            [...document.querySelectorAll(".message-fold")]
+              .flatMap((fold) => [...fold.querySelectorAll("p")])
+              .filter((p) => p.checkVisibility()).length,
+        ),
+      { message: "folded paragraphs that reach the paper" },
+    )
+    .toBe(totalFolded);
+
+  const deadControls = await page.evaluate(
+    () =>
+      [...document.querySelectorAll(".message-fold > summary")].filter((el) =>
+        el.checkVisibility(),
+      ).length,
+  );
+  expect(deadControls, "controls printed with nothing to press").toBe(0);
+
+  // The reader gets their page back as they left it.
+  await page.emulateMedia({ media: "screen" });
+  await expect(page.locator(".message-fold[open]")).toHaveCount(shutBefore);
+});
+
+// Printing is something a reader does in passing, and the page they come back
+// to should be the one they left. Two ways it was not.
+//
+// A browser may announce the same print twice, through the event and through
+// the media query, and both were acted on: the second found the folds already
+// open, recorded that there was nothing to put back, and the messages stayed
+// open afterwards. And closing a fold again looked to the page exactly like
+// the reader closing it, so it was carried back up to the person it belongs
+// to — from the Visit panel at the foot of the page to the principal's message
+// in the middle of it.
+test("printing leaves the page where the reader left it", async ({ page }) => {
+  await page.addInitScript(() => {
+    const real = CSS.supports.bind(CSS);
+    CSS.supports = ((condition: string, value?: string) =>
+      condition.includes("details-content")
+        ? false
+        : value === undefined
+          ? real(condition)
+          : real(condition, value)) as typeof CSS.supports;
+  });
+
+  await page.setViewportSize({ width: 718, height: 1000 });
+  await page.goto("/");
+  await awake(page);
+
+  const shutBefore = await page.locator(".message-fold:not([open])").count();
+  expect(shutBefore, "messages shut on the screen").toBeGreaterThan(0);
+
+  // Far enough down that a fold being carried back to its own article would
+  // take the reader with it.
+  await page.locator("#visit").scrollIntoViewIfNeeded();
+  const before = await restingScroll(page);
+  expect(before, "scrolled away from the messages").toBeGreaterThan(0);
+
+  // Announced twice, which is what the browsers this fallback exists for do:
+  // they raise the event and change the media at the same print. The second
+  // telling is the one that used to lose the record of what to put back.
+  await page.emulateMedia({ media: "print" });
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("beforeprint"));
+    window.dispatchEvent(new Event("beforeprint"));
+  });
+  await expect
+    .poll(() => page.locator(".message-fold:not([open])").count(), {
+      message: "messages opened for the printer",
+    })
+    .toBe(0);
+
+  await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+  await page.emulateMedia({ media: "screen" });
+
+  await expect(
+    page.locator(".message-fold:not([open])"),
+    "messages shut again afterwards",
+  ).toHaveCount(shutBefore);
+
+  // Returning from paper reflows the page a little, so what is asked is that
+  // the reader is still looking at what they printed from, rather than at an
+  // identical number. The fault this guards moved them the length of the page,
+  // from the Visit panel to a message halfway up it.
+  await expect(
+    page.locator("#visit"),
+    "the section the reader printed from",
+  ).toBeInViewport();
+  expect(
+    Math.abs((await restingScroll(page)) - before),
+    "how far the page moved while printing",
+  ).toBeLessThan(1000);
+
+  // The mark that tells a script's close apart from the reader's has to be
+  // spent when it is read. Left on the fold, every close the reader made for
+  // the rest of the visit was taken for the script's, and they were never
+  // carried back to the message they had been reading.
+  //
+  // The mark itself is read rather than the scrolling that follows from it.
+  // Collapsing a message this long shortens the page by more than a screen,
+  // which drags the scroll up on its own and leaves the message near the top
+  // whether or not anything carried the reader there: measured that way, a
+  // fold that had kept its mark looked exactly like one that had spent it.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            [...document.querySelectorAll<HTMLElement>(".message-fold")].filter(
+              (el) => el.dataset.printRestore !== undefined,
+            ).length,
+        ),
+      { message: "folds still carrying the script's mark" },
+    )
+    .toBe(0);
+
+  // And spent even when the fold does not stay shut. The notice arrives on
+  // its own turn, so a reader who reopens a message just as the sheet comes
+  // back finds it already open by the time the notice lands. Read before the
+  // handler asks whether the fold is open, the mark is cleared either way;
+  // asked the other way round it stayed on, and was spent on the reader's
+  // next close instead.
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("beforeprint"));
+    window.dispatchEvent(new Event("afterprint"));
+    for (const fold of document.querySelectorAll(".message-fold")) {
+      fold.setAttribute("open", "");
+    }
+  });
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            [...document.querySelectorAll<HTMLElement>(".message-fold")].filter(
+              (el) => el.dataset.printRestore !== undefined,
+            ).length,
+        ),
+      { message: "marks left on folds reopened as the sheet came back" },
+    )
+    .toBe(0);
 });
 
 // A rule between two things divides them. Carried by the last item as well, it
@@ -1202,6 +1469,20 @@ test("every caption is written on the solid part of its veil", async ({
         return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
       };
 
+      // Read through the browser rather than out of the text of the value.
+      // Tailwind writes a faded colour as `oklab(… / .75)`, and taking the
+      // numbers out of that string read near-white as nearly black.
+      const paint = document
+        .createElement("canvas")
+        .getContext("2d", { willReadFrequently: true })!;
+      const channels = (colour: string) => {
+        paint.clearRect(0, 0, 1, 1);
+        paint.fillStyle = colour;
+        paint.fillRect(0, 0, 1, 1);
+        const [r, g, b, a] = paint.getImageData(0, 0, 1, 1).data;
+        return [r, g, b, a / 255];
+      };
+
       return [...document.querySelectorAll("#moments li p")].map((el) => {
         const style = getComputedStyle(el);
         const box = el.getBoundingClientRect();
@@ -1218,6 +1499,7 @@ test("every caption is written on the solid part of its veil", async ({
         ].map((match) => {
           const parts = match[1].split(",").map((n) => Number.parseFloat(n));
           return {
+            rgb: parts.slice(0, 3),
             alpha: parts.length > 3 ? parts[3] : 1,
             at:
               match[3] === "%"
@@ -1229,14 +1511,59 @@ test("every caption is written on the solid part of its veil", async ({
         // The veil is at its darkest along the foot and holds that value for a
         // while before it begins to fade. How far it holds is the band the
         // words have to stay inside.
+        //
+        // The band runs only as far as the colour and the strength both hold.
+        // Followed on strength alone, a second stop painted a lighter colour
+        // at the same strength still counted as solid, and the words were
+        // measured against the first stop's colour over ground the veil had
+        // already lightened.
         const strongest = stops[0]?.alpha ?? 0;
+        const veilColour = stops[0]?.rgb ?? [0, 0, 0];
         let solidTo = 0;
         for (const stop of stops) {
-          if (Math.abs(stop.alpha - strongest) > 0.001) break;
+          const sameStrength = Math.abs(stop.alpha - strongest) <= 0.001;
+          const sameColour = stop.rgb.every(
+            (channel, i) => Math.abs(channel - veilColour[i]) <= 0.5,
+          );
+          if (!sameStrength || !sameColour) break;
           solidTo = stop.at;
         }
 
-        const [r, g, b] = style.color.match(/[\d.]+/g)!.map(Number);
+        // The lightest a photograph can be is white, so the veil is laid over
+        // white to find the most the words ever have to cross. Taking the
+        // veil's own colour and not only its strength is what makes this a
+        // measurement rather than an assumption: a pale veil at the same
+        // strength leaves white words on a white band.
+        //
+        // Opacity is painted once, over the caption and its veil together,
+        // and it is applied here the same way. Faded separately, the words
+        // were mixed into a backdrop that had already been faded and the pair
+        // came out closer than the pixels the browser paints: a caption at
+        // four-fifths strength was reported at 4.37:1 where the painted
+        // result is 5.74:1, which is a rule objecting to a page that is fine.
+        let fade = 1;
+        for (let node: Element | null = el; node; node = node.parentElement) {
+          fade *= Number(getComputedStyle(node).opacity);
+        }
+
+        const colour = channels(style.color);
+        const [r, g, b] = colour;
+        // Ink can be made see-through by its own colour as well as by an
+        // opacity, and the fourth value was being dropped.
+        const inkAlpha = colour[3];
+
+        const backdrop = veilColour.map(
+          (channel) =>
+            fade * strongest * channel + (1 - fade * strongest) * 255,
+        );
+        const overVeil = inkAlpha + strongest * (1 - inkAlpha);
+        const ink = [r, g, b].map(
+          (channel, i) =>
+            fade *
+              (inkAlpha * channel +
+                strongest * veilColour[i] * (1 - inkAlpha)) +
+            (1 - fade * overVeil) * 255,
+        );
 
         const range = document.createRange();
         range.selectNodeContents(el);
@@ -1249,7 +1576,8 @@ test("every caption is written on the solid part of its veil", async ({
           angle,
           veil: strongest,
           solidTo,
-          textLuminance: luminance(r, g, b),
+          textLuminance: luminance(ink[0], ink[1], ink[2]),
+          backdropLuminance: luminance(backdrop[0], backdrop[1], backdrop[2]),
           // How far the topmost ink sits above the foot of the box, which is
           // where the veil is measured from.
           reach: glyphs.length
@@ -1269,14 +1597,12 @@ test("every caption is written on the solid part of its veil", async ({
         "0deg",
       );
 
-      // White over the veil over the lightest photograph there could be.
-      const behind = 1 - caption.veil;
-      const linear =
-        behind <= 0.04045
-          ? behind / 12.92
-          : Math.pow((behind + 0.055) / 1.055, 2.4);
-      const lighter = Math.max(caption.textLuminance, linear);
-      const darker = Math.min(caption.textLuminance, linear);
+      // The words over the veil over the lightest photograph there could be.
+      const lighter = Math.max(
+        caption.textLuminance,
+        caption.backdropLuminance,
+      );
+      const darker = Math.min(caption.textLuminance, caption.backdropLuminance);
       expect(
         (lighter + 0.05) / (darker + 0.05),
         `${where} over the lightest photograph it could sit on`,
@@ -1805,6 +2131,16 @@ test("every word clears AA against the colour behind it", async ({ page }) => {
       while (node && node !== document.documentElement) {
         const style = getComputedStyle(node);
         if (style.backgroundImage !== "none") return "painted";
+        // Words lifted onto a photograph rather than laid on a fill. What the
+        // ancestors are coloured says nothing about what is behind these, so
+        // the fills below would answer for a backdrop that is not there. Only
+        // a box taken out of the flow can be over its sibling picture; one
+        // still in the flow sits below it and does take the fill behind.
+        if (
+          (style.position === "absolute" || style.position === "fixed") &&
+          node.parentElement?.querySelector(":scope > img")
+        )
+          return "painted";
         const own = parse(style.backgroundColor);
         if (own && own.a > 0) {
           layers.push(own);
@@ -1881,6 +2217,453 @@ test("every word clears AA against the colour behind it", async ({ page }) => {
     "text runs whose backdrop could be resolved",
   ).toBeGreaterThan(80);
   expect(report.failures, `tightest was ${report.tightest.where}`).toEqual([]);
+});
+
+// The name and the motto are lifted onto the photograph of the building, so
+// nothing in the stylesheet says what is behind them and the sweep above has
+// to stand aside for them. What keeps them legible is the veil between, and
+// that was going unchecked: taking it away altogether left the sweep reading
+// the navy band behind the picture and finding nothing wrong.
+//
+// The veil is measured here the way the caption veils are: over the lightest
+// photograph a backdrop could ever be, at its weakest point across the band
+// the words occupy, with the requirement worked out from the contrast formula
+// rather than written down.
+test("the words on the photograph have a veil strong enough to carry them", async ({
+  page,
+}) => {
+  for (const width of [1024, 1280, 1920]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    await page.waitForTimeout(200);
+
+    const report = await page.evaluate(() => {
+      const luminance = (r: number, g: number, b: number) => {
+        const channel = (value: number) => {
+          const n = value / 255;
+          return n <= 0.04045 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4);
+        };
+        return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+      };
+
+      // A colour is read through the browser rather than out of its text.
+      // Tailwind writes a faded colour as `oklab(… / .75)`, and pulling the
+      // numbers out of that string read near-white as something close to
+      // black, which fails a page that is perfectly legible.
+      const paint = document
+        .createElement("canvas")
+        .getContext("2d", { willReadFrequently: true })!;
+      const channels = (colour: string) => {
+        paint.clearRect(0, 0, 1, 1);
+        paint.fillStyle = colour;
+        paint.fillRect(0, 0, 1, 1);
+        const [r, g, b, a] = paint.getImageData(0, 0, 1, 1).data;
+        return [r, g, b, a / 255];
+      };
+
+      const veil = document.querySelector(".hero-veil");
+      const words = [...document.querySelectorAll(".hero-title")];
+      if (!veil || !words.length) return null;
+      if (!veil.checkVisibility())
+        return { painted: false, kind: "none", direction: "none", lines: [] };
+
+      const veilBox = veil.getBoundingClientRect();
+      const image = getComputedStyle(veil).backgroundImage;
+
+      // Which way the veil runs, and what kind of gradient it is. The stops
+      // below are read as fractions from the top of the veil downwards, and
+      // anything else puts its strongest part somewhere other than where the
+      // arithmetic assumes while every reading still comes out the same.
+      //
+      // The first argument is reported as it stands rather than matched for
+      // an angle. Looked for as a number of degrees and defaulted to
+      // downwards when none was found, every other way of writing it —
+      // `to bottom right`, or a radial gradient, which has no top edge at
+      // all — answered as though it were the one intended.
+      const head = /^([a-z-]+)\(\s*([^,]+)/i.exec(image);
+      const kind = head?.[1] ?? "none";
+      const first = (head?.[2] ?? "").trim();
+      const direction = /^(?:rgba?\(|#|[a-z]+\s*\d|transparent)/i.test(first)
+        ? "default"
+        : first;
+
+      // Every stop as a fraction down the veil, so the strength anywhere can
+      // be read off by interpolating between its neighbours.
+      const stops = [
+        ...image.matchAll(/rgba?\(([^)]+)\)\s*(-?[\d.]+)(px|%)/g),
+      ].map((match) => {
+        const parts = match[1].split(",").map((n) => Number.parseFloat(n));
+        return {
+          rgb: parts.slice(0, 3),
+          alpha: parts.length > 3 ? parts[3] : 1,
+          at:
+            match[3] === "%"
+              ? Number.parseFloat(match[2]) / 100
+              : Number.parseFloat(match[2]) / veilBox.height,
+        };
+      });
+
+      // Opacity multiplies down the tree and is painted after the gradient,
+      // so a veil faded by itself or by anything above it is as weak as one
+      // mixed paler, and neither shows in the stops.
+      //
+      // What they share is held apart from what is theirs alone. A parent
+      // fading the veil fades the words with it, and the two are painted
+      // together before that fade is applied; counted into each separately,
+      // the pair was mixed twice and came out closer than the pixels the
+      // browser paints. The caption veil had the same fault, found first.
+      const fadeTo = (start: Element | null, stop: Element | null) => {
+        let fade = 1;
+        let node: Element | null = start;
+        while (node && node !== stop) {
+          fade *= Number(getComputedStyle(node).opacity);
+          node = node.parentElement;
+        }
+        return fade;
+      };
+      const shared = (() => {
+        const ancestry = new Set<Element>();
+        for (let node: Element | null = veil; node; node = node.parentElement) {
+          ancestry.add(node);
+        }
+        for (
+          let node: Element | null = words[0];
+          node;
+          node = node.parentElement
+        ) {
+          if (ancestry.has(node)) return node;
+        }
+        return null;
+      })();
+      const groupFade = fadeTo(shared, null);
+      const veilFade = fadeTo(veil, shared);
+
+      const strengthAt = (fraction: number) => {
+        if (!stops.length) return { alpha: 0, rgb: [0, 0, 0] };
+        if (fraction <= stops[0].at) return stops[0];
+        const last = stops[stops.length - 1];
+        if (fraction >= last.at) return last;
+        for (let i = 1; i < stops.length; i++) {
+          const before = stops[i - 1];
+          const after = stops[i];
+          if (fraction > after.at) continue;
+          const span = after.at - before.at || 1;
+          const t = (fraction - before.at) / span;
+          const alpha = before.alpha + (after.alpha - before.alpha) * t;
+          // Colour is carried across the span with the strength multiplied
+          // into it, which is how a browser blends two stops. Mixed on its
+          // own and divided back out afterwards, the result came out darker
+          // than the pixels actually painted: a veil running from a weak
+          // black to a solid grey was read as a strong dark one and passed
+          // at 3.2:1 where the painted pixels gave 2.5:1.
+          //
+          // Held at the colour of the stop before, it was wrong in a second
+          // way, and a veil turning pale halfway down still answered.
+          const mixed = before.rgb.map(
+            (channel, c) =>
+              channel * before.alpha +
+              (after.rgb[c] * after.alpha - channel * before.alpha) * t,
+          );
+          return {
+            alpha,
+            rgb: alpha > 0 ? mixed.map((channel) => channel / alpha) : mixed,
+          };
+        }
+        return last;
+      };
+
+      return {
+        painted: true,
+        kind,
+        direction,
+        lines: words.map((el) => {
+          const style = getComputedStyle(el);
+          const box = el.getBoundingClientRect();
+          // The fourth value when there is one. Ink can be made see-through
+          // by its own colour as easily as by an opacity, and discarding it
+          // read white at a quarter strength as solid white: about 3.2:1
+          // where the painted result is nearer 1.4:1.
+          const colour = channels(style.color);
+          const [r, g, b] = colour;
+          const inkAlpha = colour[3];
+          const size = Number.parseFloat(style.fontSize);
+          const weight = Number.parseInt(style.fontWeight) || 400;
+          const textFade = fadeTo(el, shared) * inkAlpha;
+
+          // The lightest a photograph can ever be is white, so the veil and
+          // the words are both laid over white to find the most they ever
+          // have to carry. Whatever fades the two together is applied once,
+          // at the end, which is where a browser applies it.
+          const readability = (stop: { alpha: number; rgb: number[] }) => {
+            const veilAlpha = veilFade * stop.alpha;
+            const overWhite = (alpha: number, colours: number[], c: number) =>
+              groupFade * alpha * colours[c] + (1 - groupFade * alpha) * 255;
+
+            const veiled = stop.rgb.map((_, c) =>
+              overWhite(veilAlpha, stop.rgb, c),
+            );
+            // The words sit on the veil inside the group, so the two are
+            // mixed before the shared fade reaches either of them.
+            const onVeil = textFade + veilAlpha * (1 - textFade);
+            const inked = [r, g, b].map(
+              (channel, c) =>
+                groupFade *
+                  (textFade * channel +
+                    veilAlpha * stop.rgb[c] * (1 - textFade)) +
+                (1 - groupFade * onVeil) * 255,
+            );
+            const ink = luminance(inked[0], inked[1], inked[2]);
+            const behind = luminance(veiled[0], veiled[1], veiled[2]);
+            return (
+              (Math.max(ink, behind) + 0.05) / (Math.min(ink, behind) + 0.05)
+            );
+          };
+
+          const from = (box.top - veilBox.top) / veilBox.height;
+          const to = (box.bottom - veilBox.top) / veilBox.height;
+          const samples = [
+            strengthAt(from),
+            strengthAt(to),
+            ...stops.filter((stop) => stop.at > from && stop.at < to),
+          ];
+          // The worst place is the hardest to read rather than the thinnest.
+          // A veil can lose strength and gain lightness at the same time, and
+          // the two do not reach their worst together.
+          const worst = samples.reduce((a, c) =>
+            readability(a) <= readability(c) ? a : c,
+          );
+
+          return {
+            words: el.textContent?.trim().slice(0, 24) ?? "",
+            // Large text is held to the lower bar the guidance sets for it.
+            needed: size >= 24 || (size >= 18.66 && weight >= 700) ? 3 : 4.5,
+            got: readability(worst),
+            alpha: Number((worst.alpha * veilFade).toFixed(3)),
+            onTheVeil:
+              box.top >= veilBox.top - 1 && box.bottom <= veilBox.bottom + 1,
+          };
+        }),
+      };
+    });
+
+    expect(report, `the hero at ${width}px`).not.toBeNull();
+    expect(
+      report!.painted,
+      `the veil is drawn at ${width}px, where the words sit on the photograph`,
+    ).toBe(true);
+    expect(
+      report!.lines.length,
+      `words over the photograph at ${width}px`,
+    ).toBe(2);
+    // Every reading above is taken as a fraction from the top of the veil
+    // downwards, so a veil running any other way would be measured at the
+    // wrong end of itself and still answer.
+    expect(report!.kind, `the veil is a linear gradient at ${width}px`).toBe(
+      "linear-gradient",
+    );
+    expect(
+      ["default", "180deg", "to bottom"].includes(report!.direction),
+      `the veil runs down the photograph at ${width}px (${report!.direction})`,
+    ).toBe(true);
+
+    for (const line of report!.lines) {
+      expect(
+        line.onTheVeil,
+        `"${line.words}" is within the veil at ${width}px`,
+      ).toBe(true);
+      expect(
+        line.got,
+        `"${line.words}" at ${width}px over the lightest photograph it could sit on (veil at ${line.alpha})`,
+      ).toBeGreaterThanOrEqual(line.needed);
+    }
+  }
+});
+
+/**
+ * Everything above reads the veil out of its own declarations, which says
+ * what was asked for rather than what the reader is shown. A veil cut away by
+ * a mask, faded to nothing by a filter, or sent behind the photograph by its
+ * stacking order declares exactly the same gradient and answers every reading
+ * identically while darkening nothing at all.
+ *
+ * So the pixels are read instead: the words are taken away, the photograph
+ * beneath them is photographed with the veil and again without it, and the
+ * veil is asked to have made a difference a reader could see.
+ *
+ * Read at the widths where the words sit on the photograph. A phone sets the
+ * heading below it, where there is nothing to carry and no veil drawn.
+ */
+test("the veil over the hero actually darkens the photograph", async ({
+  page,
+}) => {
+  for (const width of [1024, 1280, 1920]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    await awake(page);
+    await page.waitForLoadState("networkidle");
+
+    // Without the photograph there is nothing for a veil to carry, and the
+    // navy behind it is dark enough to pass every reading below on its own.
+    // Found through the veil rather than by a class name, so the two cannot
+    // come apart.
+    const photograph = await page.evaluate(() => {
+      const veil = document.querySelector(".hero-veil");
+      const image = veil?.parentElement?.querySelector("img");
+      return image
+        ? { complete: image.complete, width: image.naturalWidth }
+        : null;
+    });
+    expect(
+      photograph,
+      `the hero carries a photograph at ${width}px`,
+    ).not.toBeNull();
+    expect(
+      photograph!.complete && photograph!.width > 0,
+      `the hero photograph has loaded at ${width}px`,
+    ).toBe(true);
+
+    // The brightest pixel in a region, which is the worst case for the pale
+    // text laid over it.
+    const brightest = async (clip: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }) => {
+      const shot = await page.screenshot({ clip });
+      return page.evaluate(async (encoded) => {
+        const image = new Image();
+        image.src = `data:image/png;base64,${encoded}`;
+        await image.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const paint = canvas.getContext("2d", { willReadFrequently: true })!;
+        paint.drawImage(image, 0, 0);
+        const { data } = paint.getImageData(0, 0, canvas.width, canvas.height);
+
+        const channel = (value: number) => {
+          const n = value / 255;
+          return n <= 0.04045 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4);
+        };
+        let worst = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const l =
+            0.2126 * channel(data[i]) +
+            0.7152 * channel(data[i + 1]) +
+            0.0722 * channel(data[i + 2]);
+          if (l > worst) worst = l;
+        }
+        return worst;
+      }, shot.toString("base64"));
+    };
+
+    const region = await page.evaluate(() => {
+      const words = [...document.querySelectorAll(".hero-title")];
+      if (!words.length) return null;
+      const boxes = words.map((el) => el.getBoundingClientRect());
+      const top = Math.min(...boxes.map((b) => b.top));
+      const bottom = Math.max(...boxes.map((b) => b.bottom));
+      const left = Math.min(...boxes.map((b) => b.left));
+      const right = Math.max(...boxes.map((b) => b.right));
+      // The words themselves would be measured as part of the background, so
+      // they are taken out of the picture while it is read. Hidden rather
+      // than removed, so nothing reflows and the region keeps its place.
+      for (const el of words) (el as HTMLElement).style.visibility = "hidden";
+      return {
+        x: Math.round(left),
+        y: Math.round(top),
+        width: Math.max(1, Math.round(right - left)),
+        height: Math.max(1, Math.round(bottom - top)),
+        ink: getComputedStyle(words[0]).color,
+      };
+    });
+    expect(
+      region,
+      `the hero carries words over the photograph at ${width}px`,
+    ).not.toBeNull();
+
+    const veiled = await brightest(region!);
+
+    await page.evaluate(() => {
+      const veil = document.querySelector(".hero-veil") as HTMLElement | null;
+      if (veil) veil.style.display = "none";
+    });
+    const bare = await brightest(region!);
+
+    // With the veil already out of the way, the photograph is taken away too.
+    // What is behind the words has to change when it goes, which is how the
+    // photograph is known to be painted there rather than merely present in
+    // the markup.
+    await page.evaluate(() => {
+      const veil = document.querySelector(".hero-veil");
+      const image = veil?.parentElement?.querySelector("img");
+      if (image) image.style.visibility = "hidden";
+    });
+    const withoutPhotograph = await brightest(region!);
+
+    await page.evaluate(() => {
+      const veil = document.querySelector(".hero-veil") as HTMLElement | null;
+      if (veil) veil.style.removeProperty("display");
+      const image = veil?.parentElement?.querySelector("img");
+      if (image) image.style.removeProperty("visibility");
+      for (const el of document.querySelectorAll(".hero-title")) {
+        (el as HTMLElement).style.removeProperty("visibility");
+      }
+    });
+
+    // The ink is read from the page rather than assumed to be white, so the
+    // test goes on meaning something if the heading is ever recoloured.
+    const against = async (behind: number) =>
+      page.evaluate(
+        ({ ink, luminance }) => {
+          const paint = document
+            .createElement("canvas")
+            .getContext("2d", { willReadFrequently: true })!;
+          paint.fillStyle = ink;
+          paint.fillRect(0, 0, 1, 1);
+          const [r, g, b] = paint.getImageData(0, 0, 1, 1).data;
+          const channel = (value: number) => {
+            const n = value / 255;
+            return n <= 0.04045
+              ? n / 12.92
+              : Math.pow((n + 0.055) / 1.055, 2.4);
+          };
+          const text =
+            0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+          return (
+            (Math.max(text, luminance) + 0.05) /
+            (Math.min(text, luminance) + 0.05)
+          );
+        },
+        { ink: region!.ink, luminance: behind },
+      );
+
+    // The veil is asked to be the thing carrying the words, not a layer that
+    // happens to sit there. Asked only to darken something, it passed over
+    // the navy band with the photograph blocked, where the words were
+    // perfectly legible without it and the veil was doing nothing.
+    //
+    // Asked instead that the words be illegible without it, the rule refused
+    // a darker photograph that needed no veil at all, which is not something
+    // this should have an opinion about. What it asks now is that the
+    // photograph is what lies behind the words, and that the veil darkens it.
+    expect(
+      withoutPhotograph,
+      `the photograph is what is painted behind the words at ${width}px`,
+    ).not.toBeCloseTo(bare, 3);
+
+    expect(
+      veiled,
+      `the veil darkens the photograph behind the words at ${width}px`,
+    ).toBeLessThan(bare);
+
+    // The heading is display-sized, which is the lower bar the guidance sets.
+    expect(
+      await against(veiled),
+      `the heading at ${width}px against the brightest pixel actually painted behind it`,
+    ).toBeGreaterThanOrEqual(3);
+  }
 });
 
 // The mission is set as a quotation, and a quotation's marks are a pair. One
@@ -2314,18 +3097,6 @@ test.describe("the open post closes on time", () => {
   const closes = new Date(vacancyClosesAt).getTime();
   const MINUTE = 60_000;
 
-  // The served file already shows the panel, so anything asserted before the
-  // page comes alive is a reading of the build rather than of the decision the
-  // visitor's clock produced.
-  const awake = (page: Page) =>
-    page.waitForFunction(() => {
-      const main = document.querySelector("main");
-      return Boolean(
-        main &&
-        Object.keys(main).some((key) => key.startsWith("__reactFiber$")),
-      );
-    });
-
   for (const timezoneId of ["Asia/Kolkata", "America/Los_Angeles"]) {
     test.describe(`read from ${timezoneId}`, () => {
       test.use({ timezoneId });
@@ -2372,6 +3143,79 @@ test.describe("the open post closes on time", () => {
         // What a teacher arriving late is left with.
         await expect(page.locator("main")).toContainText(careers.openTo);
         await expect(page.locator('a[href^="mailto:"]').first()).toBeVisible();
+      });
+
+      // A tab left open crosses the closing date without ever loading again,
+      // and the panel used to keep whatever it was built with for as long as
+      // the page stayed open. A post that had closed went on inviting
+      // applications until someone happened to reload it.
+      test("stands down in a tab that was already open", async ({ page }) => {
+        test.skip(!vacancy.active, "no post is open");
+
+        await page.clock.install({ time: new Date(closes - MINUTE) });
+        await page.goto("/careers");
+        await awake(page);
+        await expect(page.getByText("Open now")).toBeVisible();
+
+        // No second navigation: the page the reader is looking at is the one
+        // that has to notice.
+        await page.clock.fastForward(2 * MINUTE);
+
+        await expect(page.getByText("Open now")).toHaveCount(0);
+        await expect(page.locator("main")).toContainText(careers.openTo);
+      });
+
+      // A tab opened well before the closing date waited through it. One
+      // timer cannot be asked to hold more than about twenty-five days, and
+      // a longer wait was simply not set, so the only thing left to notice
+      // was the reader coming back to the tab. Opened a month ahead and left
+      // alone, the panel went on inviting applications.
+      test("stands down in a tab opened long before the date", async ({
+        page,
+      }) => {
+        test.skip(!vacancy.active, "no post is open");
+
+        const DAY = 24 * 60 * MINUTE;
+        // Opened the day the post went up, which is the longest wait the
+        // panel is ever asked to hold and the one a reader can really sit
+        // through. A lead of forty days needed only a single further timer,
+        // so a panel that set one more and then stopped passed; the real
+        // window is three months and needs them set again and again.
+        const opened = new Date(`${vacancy.datePosted}T00:00:00+05:30`);
+        await page.clock.install({ time: opened });
+        await page.goto("/careers");
+        await awake(page);
+        await expect(page.getByText("Open now")).toBeVisible();
+
+        // Carried to a fortnight before the date without the tab being
+        // touched, in steps short enough that the longest a single timer can
+        // hold runs out inside one of them. Jumped straight past the moment
+        // instead, the first timer lands beyond it and stands the post down
+        // on its own, which a panel that never sets a second timer passes
+        // just as well as one that does.
+        const untilFortnightBefore =
+          closes - 14 * DAY - opened.getTime() - MINUTE;
+        const step = 6 * DAY;
+        for (let gone = 0; gone < untilFortnightBefore; gone += step) {
+          await page.clock.runFor(Math.min(step, untilFortnightBefore - gone));
+        }
+        await expect(
+          page.getByText("Open now"),
+          "the post is still open a fortnight before it closes",
+        ).toBeVisible();
+
+        // Brought to just past the moment itself rather than a day beyond it,
+        // so that standing down late is not the same as standing down. A
+        // second timer set for too long closed the post half a day after it
+        // had closed, and a reader in those hours is the one this is for.
+        //
+        // Run rather than jumped, so each timer falls due at its own moment
+        // and a timer that is set once rather than set again cannot be
+        // carried to the end of the jump and fire there regardless.
+        await page.clock.runFor(14 * DAY + 2 * MINUTE);
+
+        await expect(page.getByText("Open now")).toHaveCount(0);
+        await expect(page.locator("main")).toContainText(careers.openTo);
       });
     });
   }
@@ -2584,6 +3428,160 @@ test.describe("mobile", () => {
     ).toBe(0);
   });
 
+  // The menu holds things out of reach that stay on screen, and one of them
+  // went on looking exactly as it had: the announcement bar kept its arrow,
+  // its full brightness and its pointer while swallowing every tap, which on
+  // a phone reads as a page that has stopped working. Nothing is lost by it
+  // being out of reach, the menu carries its own way to the same section, so
+  // what it has to do is stop offering one.
+  //
+  // Stated as a rule over whatever is on screen rather than over that one
+  // bar: anything a reader can see but the menu has taken away has to look
+  // taken away.
+  test("nothing the menu holds still looks like it can be used", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    // Every visible link in the chrome, reported whether it is held or not,
+    // so the same elements can be followed through the menu opening and
+    // closing again. Listing only the held ones answered with an empty list
+    // while the menu was shut, which says nothing about how they look: a
+    // page that dimmed them permanently passed on that silence.
+    // Effective opacity, multiplied up the tree. Read from the anchor alone,
+    // a wrapper dimmed once and for all looked exactly like a link the menu
+    // had just taken away, and permanently dimmed chrome passed this.
+    const chrome = async () =>
+      page.evaluate(() => {
+        const fadeOf = (start: Element) => {
+          let fade = 1;
+          let node: Element | null = start;
+          while (node) {
+            fade *= Number(getComputedStyle(node).opacity);
+            node = node.parentElement;
+          }
+          return fade;
+        };
+        return [...document.querySelectorAll<HTMLElement>("header a[href]")]
+          .filter((el) => el.checkVisibility())
+          .map((el) => ({
+            what: (el.textContent ?? "").trim().slice(0, 30),
+            held: el.closest("[inert]") !== null,
+            opacity: fadeOf(el),
+          }));
+      });
+
+    const before = await chrome();
+    expect(
+      before.filter((item) => item.held),
+      "nothing is held while the menu is shut",
+    ).toEqual([]);
+    expect(before.length, "links in the chrome").toBeGreaterThan(0);
+    for (const item of before) {
+      expect(item.opacity, `"${item.what}" before the menu opens`).toBe(1);
+    }
+
+    await page.getByRole("button", { name: "Open menu" }).click();
+    await page.waitForTimeout(350);
+
+    const during = await chrome();
+    const held = during.filter((item) => item.held);
+    expect(
+      held.length,
+      "something on screen is held by the menu",
+    ).toBeGreaterThan(0);
+    for (const item of held) {
+      expect(
+        item.opacity,
+        `"${item.what}" is held by the menu and still looks usable`,
+      ).toBeLessThan(1);
+    }
+
+    // Given back in full the moment the menu closes, in reach and in looks.
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(350);
+
+    const after = await chrome();
+    expect(
+      after.filter((item) => item.held),
+      "the menu gives everything back",
+    ).toEqual([]);
+    // The same links, not merely the ones still there. Both checks below read
+    // what the page happens to show, so chrome that vanished when the menu
+    // closed left nothing to hold and nothing to iterate, and answered both.
+    expect(
+      after.map((item) => item.what),
+      "every link in the chrome is back once the menu closes",
+    ).toEqual(before.map((item) => item.what));
+    for (const item of after) {
+      expect(item.opacity, `"${item.what}" after the menu closes`).toBe(1);
+    }
+  });
+
+  // The panel is hidden by the stylesheet at one width and the page released by
+  // a script at another, and the two were written in different units: `lg` is
+  // `64rem`, the script said `1024px`. They agree only while the reader has
+  // left the default font size alone. Raised to 20px, `lg` moves to 1280px
+  // while the script still fired at 1024px, so widening a window from 1100 to
+  // 1300 took the panel and its button off screen without ever releasing the
+  // page: everything stayed inert and the scroll stayed locked, with nothing
+  // left on screen to undo it.
+  //
+  // The rule is stated rather than the width, so it holds at any font size: a
+  // page held for the menu must keep something on screen that releases it.
+  test("widening the window never leaves the page held shut", async ({
+    page,
+  }) => {
+    // A reader's own default size, which `rem` in a media query answers to and
+    // an author stylesheet cannot move.
+    const cdp = await page.context().newCDPSession(page);
+
+    for (const standard of [16, 20, 24]) {
+      await cdp.send("Page.setFontSizes", {
+        fontSizes: { standard, fixed: standard },
+      });
+
+      for (const [from, to] of [
+        [1100, 1300],
+        [1000, 1600],
+        [900, 2000],
+      ]) {
+        await page.setViewportSize({ width: from, height: 800 });
+        await page.goto("/");
+
+        const opener = page.getByRole("button", { name: "Open menu" });
+        if (!(await opener.isVisible())) continue;
+        await opener.click();
+        await expect(
+          page.getByRole("navigation", { name: "Menu" }),
+        ).toBeVisible();
+
+        await page.setViewportSize({ width: to, height: 800 });
+        await page.waitForTimeout(250);
+
+        const state = await page.evaluate(() => {
+          const panel = document.getElementById("mobile-menu");
+          const button = [...document.querySelectorAll("button")].find((el) =>
+            /menu/i.test(el.getAttribute("aria-label") ?? ""),
+          );
+          return {
+            held:
+              document.querySelectorAll("[inert]").length > 0 ||
+              document.body.style.overflow === "hidden",
+            wayOut:
+              Boolean(panel?.checkVisibility()) ||
+              Boolean(button?.checkVisibility()),
+          };
+        });
+
+        expect(
+          state.held && !state.wayOut,
+          `the page is held with no way out at a ${standard}px default, ${from}px widened to ${to}px`,
+        ).toBe(false);
+      }
+    }
+  });
+
   // Opening the menu part-way down the page, which is where a reader on a
   // phone reaches for it. What is guarded is the reader's position across
   // opening and closing, which has to survive both the panel taking focus and
@@ -2610,36 +3608,143 @@ test.describe("mobile", () => {
   });
 
   // The page behind the menu is locked, so anything the panel does not show is
-  // out of reach altogether. Asked on the shortest screen the site supports,
-  // where the panel has the least room to fit in.
-  test("every menu item is on screen at once on a short screen", async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 320, height: 568 });
-    await page.goto("/");
-    await page.getByRole("button", { name: "Open menu" }).click();
+  // out of reach altogether. Asked on the shortest screens the site supports:
+  // upright, where the panel should need no scrolling at all, and turned on
+  // its side, where it cannot fit and every item has to be reachable by
+  // scrolling the panel instead. The panel hangs from the foot of the header,
+  // so a height set against the screen alone overhung the bottom of a short
+  // landscape window and left the last item half off it at full scroll.
+  test("every menu item can be reached on a short screen", async ({ page }) => {
+    for (const [width, height, scrolls] of [
+      [320, 568, false],
+      [568, 320, true],
+      [653, 280, true],
+      [740, 360, true],
+    ] as const) {
+      const where = `${width}x${height}`;
+      await page.setViewportSize({ width, height });
+      await page.goto("/");
+      await page.getByRole("button", { name: "Open menu" }).click();
 
-    const menu = page.getByRole("navigation", { name: "Menu" });
-    await expect(menu).toBeVisible();
+      const menu = page.getByRole("navigation", { name: "Menu" });
+      await expect(menu, where).toBeVisible();
 
-    const links = menu.locator("a");
-    const count = await links.count();
-    // Every section, the careers page, the phone number and each profile.
-    expect(count, "every way out of the menu is present").toBe(
-      navLinks.length + 2 + social.length,
-    );
+      const links = menu.locator("a");
+      const count = await links.count();
+      // Every section, the careers page, the phone number and each profile.
+      expect(count, `every way out of the menu is present at ${where}`).toBe(
+        navLinks.length + 2 + social.length,
+      );
 
-    // In full, each of them: a link showing half of itself is one a thumb can
-    // miss, and would answer a looser question than this is asking.
-    for (let i = 0; i < count; i += 1) {
-      await expect(links.nth(i), `menu link ${i}`).toBeInViewport({ ratio: 1 });
+      // The panel itself must end on the screen. Running past the bottom puts
+      // its last item beyond reach however far the panel is scrolled.
+      const overhang = await menu.evaluate(
+        (el) =>
+          Math.round(el.getBoundingClientRect().bottom) - window.innerHeight,
+      );
+      expect(
+        overhang,
+        `the menu ends on the screen at ${where}`,
+      ).toBeLessThanOrEqual(0);
+
+      // In full, each of them: a link showing half of itself is one a thumb
+      // can miss, and would answer a looser question than this is asking.
+      await menu.evaluate((el) => {
+        el.scrollTop = 0;
+      });
+      for (let i = 0; i < count; i += 1) {
+        await links.nth(i).scrollIntoViewIfNeeded();
+        await expect(links.nth(i), `menu link ${i} at ${where}`).toBeInViewport(
+          { ratio: 1 },
+        );
+      }
+
+      if (!scrolls) {
+        // Upright there is room for the whole menu, so nothing is held back
+        // behind a scroll the reader has no reason to try.
+        const hidden = await menu.evaluate(
+          (el) => el.scrollHeight > el.clientHeight + 1,
+        );
+        expect(hidden, `the menu fits without scrolling at ${where}`).toBe(
+          false,
+        );
+      } else {
+        // Where it does not fit, a thumb has to be able to move it. Every
+        // item above was brought into view by the script, which moves a panel
+        // the reader cannot move at all: with scrolling turned off, each one
+        // still arrived and the last item was reachable here and nowhere
+        // else. What is asked now is that the panel moves when pushed.
+        await menu.evaluate((el) => {
+          el.scrollTop = 0;
+        });
+        const box = (await menu.boundingBox())!;
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        await page.mouse.wheel(0, 400);
+        await page.waitForTimeout(250);
+        expect(
+          await menu.evaluate((el) => el.scrollTop),
+          `the menu can be scrolled at ${where}`,
+        ).toBeGreaterThan(0);
+
+        // And by the hand this menu is built for. A wheel reaches a panel a
+        // thumb cannot move, so the gesture itself is made: a finger put on
+        // the panel, drawn up it, and lifted. A handler that refuses the
+        // move, or a `touch-action` anywhere under the finger that forbids
+        // panning, stops this where a wheel goes through regardless.
+        await menu.evaluate((el) => {
+          el.scrollTop = 0;
+        });
+        const touchBox = (await menu.boundingBox())!;
+        const finger = await page.context().newCDPSession(page);
+        const atX = Math.round(touchBox.x + touchBox.width / 2);
+        const from = Math.round(touchBox.y + touchBox.height * 0.75);
+        await finger.send("Input.dispatchTouchEvent", {
+          type: "touchStart",
+          touchPoints: [{ x: atX, y: from }],
+        });
+        for (const step of [0.25, 0.5, 0.75, 1]) {
+          await finger.send("Input.dispatchTouchEvent", {
+            type: "touchMove",
+            touchPoints: [
+              { x: atX, y: Math.round(from - touchBox.height * 0.5 * step) },
+            ],
+          });
+        }
+        await finger.send("Input.dispatchTouchEvent", {
+          type: "touchEnd",
+          touchPoints: [],
+        });
+        await page.waitForTimeout(300);
+        expect(
+          await menu.evaluate((el) => el.scrollTop),
+          `a thumb can move the menu at ${where}`,
+        ).toBeGreaterThan(0);
+        await finger.detach();
+
+        // Asked of everything beneath the panel rather than of a list of
+        // tag names. Asked of `a, button, ul, li, div` alone, a `span` inside
+        // a link could refuse the gesture unseen.
+        const blocked = await menu.evaluate((el) =>
+          [el, ...el.querySelectorAll("*")]
+            .filter((node) => {
+              const action = getComputedStyle(node).touchAction;
+              return !(
+                action === "auto" ||
+                action === "manipulation" ||
+                action.includes("pan-y")
+              );
+            })
+            .map(
+              (node) =>
+                `${node.tagName.toLowerCase()}:${getComputedStyle(node).touchAction}`,
+            ),
+        );
+        expect(
+          blocked,
+          `a thumb is allowed to move the menu at ${where}`,
+        ).toEqual([]);
+      }
     }
-
-    // Nothing is held back behind a scroll the reader has no reason to try.
-    const hidden = await menu.evaluate(
-      (el) => el.scrollHeight > el.clientHeight + 1,
-    );
-    expect(hidden, "the menu fits without scrolling").toBe(false);
   });
 
   // Tabbing forwards is how a keyboard reader moves through the page, and
@@ -2722,48 +3827,83 @@ test.describe("mobile", () => {
   // above cannot see it: it stays within 240px while its contents are squeezed
   // to nothing. The mark is what identifies each action at a glance, and a
   // mark squeezed to nothing identifies neither.
-  test("the call bar keeps both actions whole however narrow the screen", async ({
+  //
+  // Swept over the reader's own default size as well as the width, and the
+  // contents are measured against the button holding them rather than only
+  // against the screen. The word beside the mark was held back by a width in
+  // pixels, which answers to the screen and not to the size of the word, so
+  // enlarged text ran out of its own button and off the side of the page while
+  // the button itself stayed put and the older check saw nothing wrong.
+  test("the call bar keeps both actions whole however narrow or large", async ({
     page,
   }) => {
-    for (const width of [240, 280, 320, 360, 412]) {
-      await page.setViewportSize({ width, height: 640 });
-      await page.goto("/");
-      await page.waitForTimeout(250);
+    const cdp = await page.context().newCDPSession(page);
 
-      const actions = await page.evaluate(() => {
-        const bars = [...document.querySelectorAll("div")].filter((el) => {
-          const style = getComputedStyle(el);
-          return (
-            style.position === "fixed" &&
-            el.getBoundingClientRect().bottom >= window.innerHeight - 2 &&
-            el.querySelector('a[href^="tel:"]')
-          );
-        });
-        const bar = bars.at(-1);
-        if (!bar) return null;
-        return [...bar.querySelectorAll("a")].map((link) => {
-          const icon = link.querySelector("svg");
-          const box = link.getBoundingClientRect();
-          return {
-            name: (link.textContent ?? "").trim(),
-            icon: icon ? icon.getBoundingClientRect().width : 0,
-            past: box.right - window.innerWidth,
-          };
-        });
+    for (const standard of [16, 20, 24]) {
+      await cdp.send("Page.setFontSizes", {
+        fontSizes: { standard, fixed: standard },
       });
 
-      expect(actions, `call bar at ${width}px`).not.toBeNull();
-      expect(actions!.length, `actions at ${width}px`).toBe(2);
-      for (const action of actions!) {
-        expect(action.name, `an action is named at ${width}px`).not.toBe("");
-        expect(
-          Math.round(action.icon),
-          `${action.name} mark at ${width}px`,
-        ).toBeGreaterThanOrEqual(20);
-        expect(
-          Math.round(action.past),
-          `${action.name} past the screen at ${width}px`,
-        ).toBeLessThanOrEqual(0);
+      for (const width of [240, 280, 320, 360, 412]) {
+        const where = `${width}px at a ${standard}px default`;
+        await page.setViewportSize({ width, height: 640 });
+        await page.goto("/");
+        await page.waitForTimeout(250);
+
+        const actions = await page.evaluate(() => {
+          const bars = [...document.querySelectorAll("div")].filter((el) => {
+            const style = getComputedStyle(el);
+            return (
+              style.position === "fixed" &&
+              el.getBoundingClientRect().bottom >= window.innerHeight - 2 &&
+              el.querySelector('a[href^="tel:"]')
+            );
+          });
+          const bar = bars.at(-1);
+          if (!bar) return null;
+          return [...bar.querySelectorAll("a")].map((link) => {
+            const icon = link.querySelector("svg");
+            const box = link.getBoundingClientRect();
+            // Everything the button is actually painting, so a word that runs
+            // out of it is seen even though the button itself has not moved.
+            const spill = [...link.querySelectorAll("*")]
+              .map((child) => child.getBoundingClientRect())
+              .filter((child) => child.width > 2 && child.height > 2)
+              .reduce(
+                (worst, child) =>
+                  Math.max(
+                    worst,
+                    child.right - box.right,
+                    box.left - child.left,
+                  ),
+                0,
+              );
+            return {
+              name: (link.textContent ?? "").trim(),
+              icon: icon ? icon.getBoundingClientRect().width : 0,
+              past: box.right - window.innerWidth,
+              spill,
+            };
+          });
+        });
+
+        expect(actions, `call bar at ${where}`).not.toBeNull();
+        expect(actions!.length, `actions at ${where}`).toBe(2);
+        for (const action of actions!) {
+          expect(action.name, `an action is named at ${where}`).not.toBe("");
+          expect(
+            Math.round(action.icon),
+            `${action.name} mark at ${where}`,
+          ).toBeGreaterThanOrEqual(20);
+          expect(
+            Math.round(action.past),
+            `${action.name} past the screen at ${where}`,
+          ).toBeLessThanOrEqual(0);
+          expect(
+            Math.round(action.spill),
+            `${action.name} runs outside its own button at ${where}`,
+          ).toBeLessThanOrEqual(1);
+        }
       }
     }
   });

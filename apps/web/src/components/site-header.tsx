@@ -13,7 +13,14 @@ import { Crest, WhatsappIcon } from "@walnut/ui";
 import { SocialIcon } from "@/components/social-icon";
 import { contact, navLinks, school, social } from "@/content/school";
 
-const DESKTOP = "(min-width: 1024px)";
+/**
+ * The width the panel is hidden at by CSS, in the unit that hides it. Written
+ * in pixels, this parts company with the stylesheet wherever a reader has set
+ * a larger default font size: the panel would go off screen at one width and
+ * the page be released at another, leaving it held with nothing on screen to
+ * release it.
+ */
+const DESKTOP = "(min-width: 64rem)";
 
 /**
  * Compacting shortens the header, and because it sits in the flow, the browser
@@ -31,11 +38,19 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState("");
   const [scrolled, setScrolled] = useState(false);
+  // The panel hangs from the foot of the header, so the room it has is the
+  // screen less whatever the header is currently taking. Measured rather than
+  // assumed, because the header compacts as the page moves and grows again
+  // wherever a reader has set a larger default size.
+  const [headerHeight, setHeaderHeight] = useState(0);
 
   const panelRef = useRef<HTMLElement>(null);
   const openerRef = useRef<HTMLButtonElement>(null);
   const headerRef = useRef<HTMLElement>(null);
   const scrimRef = useRef<HTMLDivElement>(null);
+  // The two things in the header that go somewhere other than out of the menu.
+  const announcementRef = useRef<HTMLDivElement>(null);
+  const brandRef = useRef<HTMLAnchorElement>(null);
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -49,6 +64,29 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // The page is served complete and then taken over, and for a moment the two
+  // can say different things. React runs a commit's effects together, so the
+  // header's having run means the rest of the page's have too; marking the
+  // document here gives the checks something to wait on rather than a guess
+  // at how long being taken over ought to take.
+  useEffect(() => {
+    document.documentElement.dataset.ready = "";
+    return () => {
+      delete document.documentElement.dataset.ready;
+    };
+  }, []);
+
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    const measure = () =>
+      setHeaderHeight(header.getBoundingClientRect().height);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
+
   // Watching the sections of the page this header was rendered with. Moving
   // between pages loads a document, so this never outlives them.
   useEffect(() => {
@@ -56,12 +94,20 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
       .map(({ href }) => document.getElementById(href.split("#")[1]))
       .filter((el): el is HTMLElement => el !== null);
 
+    // Which sections are in the band, kept across callbacks: the observer
+    // reports only what has changed, so the last one seen stayed marked long
+    // after the reader had left it behind, and was still marked at the top of
+    // the page where no section has been reached at all.
+    const showing = new Map<Element, number>();
     const observer = new IntersectionObserver(
       (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible) setActive(`/#${visible.target.id}`);
+        for (const entry of entries) {
+          if (entry.isIntersecting)
+            showing.set(entry.target, entry.intersectionRatio);
+          else showing.delete(entry.target);
+        }
+        const nearest = [...showing.entries()].sort((a, b) => b[1] - a[1])[0];
+        setActive(nearest ? `/#${nearest[0].id}` : "");
       },
       { rootMargin: "-45% 0px -45% 0px", threshold: [0, 0.2, 0.6, 1] },
     );
@@ -90,13 +136,21 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
     // What the menu covers is put out of reach as well as out of the light, so
     // moving through the page by keyboard or by screen reader stays within what
     // opening the menu put on screen. The header is left out of this, which is
-    // what keeps the control that closes the menu available.
-    const covered = [...document.body.children].filter(
-      (el): el is HTMLElement =>
-        el instanceof HTMLElement &&
-        el !== headerRef.current &&
-        el !== scrimRef.current,
-    );
+    // what keeps the control that closes the menu available, but the two links
+    // it carries go somewhere: pressing the announcement took the page to a
+    // section underneath the open menu and left the reader with nothing
+    // focused.
+    const covered: HTMLElement[] = [
+      ...[...document.body.children].filter(
+        (el): el is HTMLElement =>
+          el instanceof HTMLElement &&
+          el !== headerRef.current &&
+          el !== scrimRef.current,
+      ),
+      ...[announcementRef.current, brandRef.current].filter(
+        (el) => el !== null,
+      ),
+    ];
     covered.forEach((el) => {
       el.inert = true;
     });
@@ -162,7 +216,20 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
             : ""
         }`}
       >
-        {announcement}
+        {/* Dimmed while the menu holds it, which is what the attribute marks.
+            Lit and arrowed but unreachable, it read as a bar that had stopped
+            working; the menu carries its own way to the Visit panel, so what
+            is wanted here is for it to stop offering one. Keyed on the
+            attribute rather than on the state beside it, so the two cannot
+            come apart. */}
+        {announcement ? (
+          <div
+            ref={announcementRef}
+            className="[&_a]:[transition-property:opacity,background-color] [&[inert]_a]:opacity-50"
+          >
+            {announcement}
+          </div>
+        ) : null}
         {/* Compacts once the page moves: the descriptor and the full crest
             introduce the school, which is only worth the height before the
             visitor has started reading. */}
@@ -172,10 +239,12 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
           }`}
         >
           <a
+            ref={brandRef}
             href="/#top"
-            className="flex min-w-0 items-center gap-3 lg:shrink-0"
+            className="flex min-w-0 items-center gap-3 transition-opacity [&[inert]]:opacity-50 lg:shrink-0"
           >
             <Crest
+              title={null}
               className={`w-auto shrink-0 transition-[height] duration-200 ${
                 scrolled ? "h-9 lg:h-10" : "h-10 lg:h-12 xl:h-14"
               }`}
@@ -300,7 +369,10 @@ export function SiteHeader({ announcement }: { announcement?: ReactNode }) {
             id="mobile-menu"
             ref={panelRef}
             aria-label="Menu"
-            className="absolute inset-x-0 top-full max-h-[80svh] overflow-y-auto overscroll-contain rounded-b-3xl border-t border-navy/10 bg-cream px-4 pt-3 pb-5 shadow-[0_18px_40px_rgb(30_47_92/0.22)] sm:px-6 lg:hidden"
+            style={{
+              maxHeight: `min(80svh, calc(100svh - ${headerHeight}px - 0.5rem))`,
+            }}
+            className="absolute inset-x-0 top-full overflow-y-auto overscroll-contain rounded-b-3xl border-t border-navy/10 bg-cream px-4 pt-3 pb-5 shadow-[0_18px_40px_rgb(30_47_92/0.22)] sm:px-6 lg:hidden"
           >
             <div className="grid grid-cols-2 gap-2">
               {navLinks.map((link) => (

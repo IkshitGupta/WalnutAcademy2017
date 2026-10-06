@@ -77,7 +77,7 @@
     scroll-margin-bottom: 4.5rem;
   }
 
-  @media (min-width: 1024px) {
+  @media (width >= 64rem) {
     :where(main, footer) * {
       scroll-margin-top: 8rem;
       scroll-margin-bottom: 0;
@@ -312,6 +312,12 @@
   .moment-caption {
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
+  }
+
+  /* Where the opener below is not supported, the fold is opened on the element
+     instead and the control it carries has nothing left to do on a sheet. */
+  .message-fold[open] > summary {
+    display: none !important;
   }
 
   /* Chrome that follows the reader down a screen has nothing to follow on a

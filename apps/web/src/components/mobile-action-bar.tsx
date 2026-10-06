@@ -38,8 +38,11 @@ export function MobileActionBar() {
         <WhatsappIcon className="h-5 w-5 shrink-0" />
         {/* Enlarged far enough and the two will not both fit. The mark is what
             identifies the action at a glance, so the word gives way first and
-            stays available to a screen reader. */}
-        <span className="max-[319px]:sr-only">WhatsApp</span>
+            stays available to a screen reader. The width is written in the
+            unit the word is set in: as a pixel count it answered only to the
+            size of the screen, and the word ran past the end of its own button
+            and off the side of the page wherever a reader had enlarged it. */}
+        <span className="max-[20rem]:sr-only">WhatsApp</span>
       </a>
     </div>
   );

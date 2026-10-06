@@ -82,9 +82,10 @@ Three layers, all run in CI:
 - **`pnpm test`** builds the export and asserts the generated HTML still
   carries the contact details, every class and learning area, the recognition
   wording, valid JSON-LD matching `school.ts`, every `srcset` rendition, a
-  description on every image, and that the careers page exports with both ways
-  to apply, one address, its own share preview and `JobPosting` markup that
-  agrees with the switch in `school.ts`.
+  description on every image, that every written-out class range names the last
+  class `schoolClasses.list` actually runs, and that the careers page exports
+  with both ways to apply, one address, its own share preview and `JobPosting`
+  markup that agrees with the switch in `school.ts`.
 
   Two things make those assertions mean something. The head, scripts, styles,
   anything carrying the `hidden` attribute and **every tag** are stripped
@@ -154,6 +155,47 @@ Three layers, all run in CI:
 
 Several of these exist because of a specific bug, and each is written to fail
 against that bug rather than around it.
+
+A width written in pixels is not the width Tailwind uses. `lg` is `64rem`, and
+a reader who has enlarged their default text moves that to 1280px while a
+script saying `1024px` still fires at 1024. The menu was hidden by one and
+released by the other, so widening a window from 1100px to 1300px at a 20px
+default took the panel and its button off screen while the page stayed inert
+and scroll-locked, with nothing left to undo it. Both are now written in
+`rem`, and a test states the rule rather than the width: a page held for the
+menu must keep something on screen that releases it, at any default size. The
+same unit trap is why the word beside the WhatsApp mark yields at `20rem`
+rather than at `319px`.
+
+Anything deciding what day it is reads the school's own timezone, written into
+the instant itself rather than left to whoever is reading. The admissions line
+taught that lesson before it stopped keeping its own dates: taken from the
+visitor's clock, the same moment showed admissions open for 2026–27 in Los
+Angeles and 2027–28 in Jaipur. What still turns on a date is the vacancy, which
+closes at the end of its last day in Jaipur and nowhere else.
+
+The header marks the document with `data-ready` once its effects have run. It
+is the one piece of the site that exists for the checks rather than for a
+reader, and it earns its place: these pages are served complete and then taken
+over, and for a moment the served answer and the live one can differ. Waiting
+on a count of frames instead, a check could read the built page and pass
+against a fault that appears a moment later, which is how the admissions line
+came to be read once in twenty before React had touched it. React runs a
+commit's effects together, so the header's having run means the rest of the
+page's have too.
+
+Printing is something a reader does in passing, and the page they come back to
+should be the one they left. A browser without `::details-content` has the
+folded messages opened for it by script, and both halves of putting them back
+were wrong. The same print is announced twice, by event and by media query, and
+the second telling found the folds already open and recorded that there was
+nothing to restore, so they stayed open afterwards; the work is now done once
+per print and the later tellings are left alone. And closing a fold again
+looked exactly like the reader closing it, which carries them back to the
+message it belongs to — from the Visit panel at the foot of the page to the
+principal's message halfway up it. A fold the script closes is marked as such,
+on the element rather than in a variable, because the browser raises that
+notice on its own turn by which time a variable has already been put back.
 
 `backdrop-filter` on the header creates a containing block, which scoped the
 dimming behind the menu to the 80px header instead of the viewport. The
@@ -237,13 +279,27 @@ a colon to introduce a list, or fold the aside in with commas. En dashes are
 fine in ranges, as in `2026–27` and `8:30 AM – 2:00 PM`.
 
 The academic session in the "Admissions open for …" strip above the header, and
-in the Visit panel, is not written down anywhere. It is worked out from the
-date, rolling over each November to the session beginning the following April,
-and it is read from the visitor's browser rather than from the build. A year
-typed into the copy would have gone on being shown long after it stopped being
-true, because these are static files that may serve for years between builds.
-If admissions should start opening at a different point in the year, edit
-`admissionSession` in `school.ts`; nothing else needs touching.
+in the Visit panel, is set in `admissions` in `school.ts`. It was worked out
+from the date for a while, on the reading that admissions open each November.
+Nobody had confirmed that month, so the line changed what it claimed on a date
+the school had not chosen. Edit `session` to advertise a different year; both
+places read the same value, and a build where they disagree fails the export
+check rather than going out.
+
+The cost of that is worth naming. These are static files that may serve for
+years between builds, and nothing in them will notice a session going by, so
+the line will keep showing `2026–27` until somebody changes it. Treat it as
+something to review each year rather than something that looks after itself.
+
+The machine-readable opening hours name Monday to Saturday, although the office
+is shut on the second Saturday of each month. `schema.org` has no way to say
+"except the second", so the choice is between two wrong answers: naming the day
+is wrong once a month, leaving it out tells every search engine the school is
+shut on the three or four Saturdays it does keep. The exception is written
+beside the visible hours, and the individual closed dates are better entered in
+the Google Business Profile, a date at a time. The export check holds the days
+in the markup against the line a visitor reads, rather than against the list the
+markup was generated from, which would agree with itself whatever it said.
 
 The Visit panel shows an address and a Get Directions link rather than a map
 image. Azure Maps and comparable services allow a rendered result to be cached
@@ -344,8 +400,15 @@ rebuild either. `vacancyClosesAt` is the one moment the post closes, at the end
 of its closing day where the school is, and the page, the build check and the
 structured data all read it. `vacancyOpen()` compares it against the visitor's
 own clock, so once that moment passes the panel stands down and the standing
-invitation is what is left, whatever timezone it is read from. The structured
-data stays in the served file, because that is what `validThrough` is for and a
+invitation is what is left, whatever timezone it is read from. A tab left open
+across the deadline stands down too: the panel is woken at the moment itself
+and again whenever the tab is brought back, because it used to keep whatever it
+was built with until someone happened to reload, and a post that has closed
+must not go on inviting applications. One timer cannot hold more than about
+twenty-five days, so the wait is made in steps rather than skipped when the
+date is further off than that; set in a single stretch, a tab opened a month
+ahead sat through the closing date without noticing it. The structured data
+stays in the served file, because that is what `validThrough` is for and a
 crawler reads the file rather than the page it becomes.
 
 Nothing that cannot correct itself names the post. The page title, description
@@ -457,6 +520,11 @@ separate, text-free simplification for the favicon.
 
 ## Before going live
 
+- **Review the advertised session each year.** `admissions.session` in
+  `apps/web/src/content/school.ts` reads `2026–27`, and nothing will move it on
+  by itself. The export check fails if the two places it appears ever disagree,
+  but it cannot tell that the year as a whole has gone stale, so this is one to
+  put in a calendar rather than to trust to memory.
 - **Take the open post down when it is filled.** Set `vacancy.active` to false
   in `apps/web/src/content/school.ts` and rebuild. Until then `validThrough`
   carries it: search engines stop showing the listing after that date on their
@@ -504,6 +572,40 @@ The number is always rendered together with its label. A bare "Affiliation No."
 reads, in the Indian school context, as a claim of board affiliation, so
 `school.recognition` and `school.recognitionNo` are printed as a pair. The
 export check enforces both halves and fails the build if `CBSE` or "Central
-Board of Secondary Education" appears on **any** exported page.
+Board of Secondary Education" appears in **any** exported file — the pages, the
+stylesheet, the script chunks and the text payloads alike, since a page whose
+menu is built in the browser keeps that wording nowhere but a chunk.
+
+The rule itself is deliberately plain: the word, allowing for dots and spaces
+because a person might write `C.B.S.E.` This is worth recording, because it was
+once much more than that. Over several review rounds it grew into Unicode
+normalisation, a derived separator class covering every dash and mathematical
+sign, entity decoding split by context, and some six hundred lines of cases
+proving all of it — defending against a claim spelled with a soft hyphen, a
+left-to-right mark or a fullwidth alphabet.
+
+That was the wrong threat model. Nothing writes this site's text but
+`school.ts`, so there is no adversary to defeat; the realistic failure is
+someone here typing the wrong word. The machinery cost far more than it
+protected, and it began doing harm: read loosely enough to catch an invisible
+character, the same rule read `c && b(s, e)` in a minified chunk as the board's
+name, and the companion rule about class numbers refused the school's own
+timings line and a truthful count of children per class. All of it was removed,
+and the checks that remain are the ones that would have caught a real mistake.
+
+The rule about class numbers is worth a line of its own, because it is the one
+that kept rejecting legitimate copy. The singular names a class — "Class 12" is
+a claim. The plural only counts when it gives both ends of a span, because a
+figure after "classes" is far more often a count: "All classes 100%
+air-conditioned", "Small classes 20 children each", and the band of figures,
+which renders as "Classes 12 Classes". Every one of those failed the build
+under a rule that read any figure following the word.
+
+The same file proves those rules against pages doctored to carry each spelling,
+in both directions, because a rule that cries wolf is as useless as one that
+sleeps. A case that must fail names the problem it expects, so a page tripping
+some other rule proves that rule twice and this one not at all; a case that
+must pass is measured against what the page already says, so it stays
+meaningful on a page that has a problem of its own.
 
 Facilities asserted only by directory sites are deliberately omitted.

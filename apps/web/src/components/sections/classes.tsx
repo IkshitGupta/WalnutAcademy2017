@@ -1,5 +1,6 @@
 import { Section } from "@/components/section";
 import {
+  classRangeHeading,
   prePrimary,
   schoolClasses,
   schoolClassesLabel,
@@ -37,8 +38,8 @@ export function Classes() {
       id="classes"
       tone="white"
       eyebrow="Classes"
-      title="Play Group through Class 8"
-      intro="Children join us at the very beginning and stay with us through the whole of their primary and middle years."
+      title={classRangeHeading}
+      intro="Children join us at the very beginning and can stay with us through the whole of their primary and middle years."
     >
       {/* The stages are a path, not a set. The rule carries the eye across them
           in order; on a phone the same rule runs down the left instead. */}

@@ -1,12 +1,8 @@
 import { ArrowRight } from "lucide-react";
-import { AdmissionNote } from "@/components/admission-note";
-import { admissionSession, stripe } from "@/content/school";
+import { admissions, stripe } from "@/content/school";
 
 /**
- * The whole bar is the link. The session is written by a client component, so
- * the destination is named in a hidden span rather than an aria-label: a label
- * would have to be built here, at build time, and would then disagree with the
- * session the visitor actually sees.
+ * The whole bar is the link. The session it names is set in `school.ts`.
  */
 export function AnnouncementBar() {
   return (
@@ -20,7 +16,7 @@ export function AnnouncementBar() {
             <span className="admission-dot absolute inset-0 rounded-full bg-gold" />
             <span className="relative h-1.5 w-1.5 rounded-full bg-gold" />
           </span>
-          <AdmissionNote buildSession={admissionSession()} />
+          {`${admissions.label} ${admissions.session}`}
           <ArrowRight
             className="h-3.5 w-3.5 shrink-0 text-gold transition-transform group-hover:translate-x-0.5 sm:h-4 sm:w-4"
             aria-hidden

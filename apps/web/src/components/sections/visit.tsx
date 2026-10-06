@@ -1,13 +1,10 @@
 import { Clock, Mail, MapPin, Navigation, Phone } from "lucide-react";
 import { WhatsappIcon } from "@walnut/ui";
 import { Section } from "@/components/section";
-import { AdmissionNote } from "@/components/admission-note";
 import { panelOnNavy } from "@/components/ui";
-import { admissionSession, contact } from "@/content/school";
+import { admissions, contact } from "@/content/school";
 
 export function Visit() {
-  const session = admissionSession();
-
   return (
     <Section
       id="visit"
@@ -35,7 +32,7 @@ export function Visit() {
             <span className="flex h-5 shrink-0 items-center" aria-hidden>
               <span className="h-1.5 w-1.5 rounded-full bg-gold" />
             </span>
-            <AdmissionNote buildSession={session} />
+            {`${admissions.label} ${admissions.session}`}
           </p>
 
           <a

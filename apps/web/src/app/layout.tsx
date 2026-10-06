@@ -4,7 +4,7 @@ import { AnnouncementBar } from "@/components/announcement-bar";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { MobileActionBar } from "@/components/mobile-action-bar";
-import { contact, school, siteUrl, social } from "@/content/school";
+import { classRange, contact, school, siteUrl, social } from "@/content/school";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -20,7 +20,7 @@ const inter = Inter({
   display: "swap",
 });
 
-const description = `${school.name} is an English medium school in ${school.locality}, teaching children from Play Group to Class 8 through activity-based, play-way learning. Established ${school.established}.`;
+const description = `${school.name} is an English medium school in ${school.locality}, teaching children from ${classRange} through activity-based, play-way learning. Established ${school.established}.`;
 
 // Most people meet a link to this site pasted into a message rather than in a
 // search result, where the picture is most of what they see before deciding

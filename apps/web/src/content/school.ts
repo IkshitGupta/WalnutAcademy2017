@@ -24,34 +24,61 @@ export const school = {
 } as const;
 
 /**
- * The affiliation the school does not hold, in the spellings it could be
- * written in. Punctuation and spacing between the letters, and a line break or
- * a tag between the words, all say the same thing to anyone reading, so they
- * are allowed for. A soft hyphen is allowed for too: it is invisible wherever
- * the line does not break, so the letters read as one word. Kept here, and
- * used by every check, so that the rule cannot be tightened in one place and
- * left behind in another.
+ * The affiliation the school does not hold.
+ *
+ * Deliberately a plain rule. It grew, over several rounds, into Unicode
+ * normalisation and a derived separator class, to catch the word spelled
+ * with a soft hyphen, a left-to-right mark or a fullwidth alphabet. Nothing
+ * writes this site's text but this file, so that was defending against an
+ * attacker who does not exist, and the machinery cost more than it protected:
+ * read loosely enough to catch an invisible character, the same rule read
+ * `c && b(s, e)` in a minified chunk as the board's name.
+ *
+ * What it has to catch is someone here typing the word. Dots and spaces are
+ * allowed for because a person might write C.B.S.E.
  */
-const between = "[\\s.\\-\\u00b7\\u2022/\\\\|_\\u00ad\\u200b]{0,3}";
-export const boardClaim = new RegExp(
-  `\\bC${between}B${between}S${between}E\\b|Central\\s+Board\\s+of\\s+Secondary\\s+Education`,
-  "i",
-);
+export const boardClaim =
+  /\bC[.\s]*B[.\s]*S[.\s]*E\b|Central\s+Board\s+of\s+Secondary\s+Education/i;
 
 /**
- * Admissions for an academic session open in the November before that session
- * begins, so the session worth advertising changes each November. The site is
- * exported as static files and may serve for a long time between builds, so
- * the session is worked out from the date rather than written into the copy.
+ * The school is recognised by the state and affiliated to no board, so the
+ * word belongs nowhere on the site: "not affiliated to any board" fails the
+ * build as surely as a claim does, because a page is better off not raising
+ * the question.
  */
-export function admissionSession(on = new Date()) {
-  const year = on.getFullYear();
-  const startYear = on.getMonth() >= 10 ? year + 1 : year;
-  return `${startYear}–${String(startYear + 1).slice(-2)}`;
-}
+export const affiliationClaim = /affiliat/i;
 
+/** Where the school is, for anything that turns an instant into a date. */
+const SCHOOL_UTC_OFFSET = "+05:30";
+
+/**
+ * The days the office keeps, in the order a week is read. Both the sentence a
+ * parent reads and the week handed to search engines are built from this.
+ */
+const OFFICE_DAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+/**
+ * The session being advertised, on the bar above the header and in the Visit
+ * panel.
+ *
+ * Worked out from the date once, on the reading that admissions open each
+ * November. Nobody had confirmed that month, so the line changed what it
+ * claimed on a date the school had not chosen. It is written out now, so it
+ * says only what it has been told to say.
+ *
+ * The cost is that it is the school's to keep current: these are static files,
+ * and nothing here will notice a session going by.
+ */
 export const admissions = {
   label: "Admissions open for",
+  session: "2026–27",
 } as const;
 
 /** Placeholder until a domain is registered. Update before going live. */
@@ -77,8 +104,19 @@ export const contact = {
     { label: "School", value: "8:30 AM – 2:00 PM" },
     { label: "Office", value: "8:00 AM – 3:00 PM" },
   ],
-  /** The working week, which the two time ranges above do not convey. */
-  hoursNote: "Monday to Saturday · Every 2nd Saturday off",
+  /**
+   * The working week, which the two time ranges above do not convey. The span
+   * is built from the same list the structured data is, so the sentence a
+   * parent reads and the week a search engine is handed cannot come to say
+   * different things.
+   *
+   * The exception the school keeps is tied to the day it is about, so a week
+   * that stopped at Friday would not go on promising a Saturday off.
+   */
+  hoursNote: [
+    `${OFFICE_DAYS[0]} to ${OFFICE_DAYS[OFFICE_DAYS.length - 1]}`,
+    ...(OFFICE_DAYS.includes("Saturday") ? ["Every 2nd Saturday off"] : []),
+  ].join(" · "),
   /** Used for local search; taken from the school's earlier site. */
   geo: { latitude: 26.8568, longitude: 75.764 },
   /** Structured form of the address, so the markup and JSON-LD cannot drift. */
@@ -93,9 +131,17 @@ export const contact = {
    * Office hours drive the structured data, because that is the window in
    * which a visitor can actually reach someone. School hours are narrower and
    * are shown as visible text only.
+   *
+   * Saturday is included although the office is shut on the second of each
+   * month, which the vocabulary has no way to say. Leaving the day out states
+   * the opposite of the truth on the three or four Saturdays the school does
+   * keep, and a listing is read as the whole week; naming it is wrong once a
+   * month instead of three times. The exception is written beside the visible
+   * lines, and the standing closures are better carried by the Google
+   * Business Profile, where a closed date can be entered one at a time.
    */
   openingHours: {
-    days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    days: OFFICE_DAYS,
     opens: "08:00",
     closes: "15:00",
   },
@@ -106,17 +152,6 @@ export const contact = {
  * school day runs and when there is someone there to answer the phone.
  */
 const [schoolHours, officeHours] = contact.hours;
-
-export const quickFacts = [
-  { label: "Play Group to Class 8", detail: null, icon: "classes" },
-  { label: "English Medium", detail: null, icon: "language" },
-  {
-    label: `${schoolHours.label} ${schoolHours.value}`,
-    detail: `${officeHours.label} ${officeHours.value}`,
-    icon: "clock",
-  },
-  { label: "Mansarovar, Jaipur", detail: null, icon: "pin" },
-] as const;
 
 export const stats = [
   { value: "2017", label: "Established", icon: "calendar" },
@@ -231,6 +266,39 @@ const roman = (className: string) =>
 export const schoolClassesLabel = `Classes ${roman(schoolClasses.list[0])}–${roman(
   schoolClasses.list[schoolClasses.list.length - 1],
 )}`;
+
+/**
+ * The whole span in words, from the first stage a child can join to the last
+ * class the school runs.
+ *
+ * Typed out by hand in five places once, in the quick facts, the classes
+ * heading, the careers opening and both descriptions a search engine is given.
+ * A list that grew left those five disagreeing with each other and with the
+ * classes beneath them, and a check reading the finished page could only ever
+ * catch the spellings it had been taught to look for. Built from the lists
+ * instead, they cannot fall out of step in the first place.
+ */
+const firstStage = prePrimary[0].name;
+
+/** The furthest a child can go here, which the export check reads too. */
+export const lastClassTaught =
+  schoolClasses.list[schoolClasses.list.length - 1];
+
+export const classRange = `${firstStage} to ${lastClassTaught}`;
+
+/** The same span, where the sentence around it reads better with "through". */
+export const classRangeHeading = `${firstStage} through ${lastClassTaught}`;
+
+export const quickFacts = [
+  { label: classRange, detail: null, icon: "classes" },
+  { label: "English Medium", detail: null, icon: "language" },
+  {
+    label: `${schoolHours.label} ${schoolHours.value}`,
+    detail: `${officeHours.label} ${officeHours.value}`,
+    icon: "clock",
+  },
+  { label: school.locality, detail: null, icon: "pin" },
+] as const;
 
 /** Prospectus, "Fun Learning Areas". */
 export const learningAreas = [
@@ -476,7 +544,7 @@ export const vacancy = {
  * visitor abroad, the build and a search engine all agree on one moment rather
  * than each taking the date to mean something different.
  */
-export const vacancyClosesAt = `${vacancy.closingDay}T23:59:59+05:30`;
+export const vacancyClosesAt = `${vacancy.closingDay}T23:59:59${SCHOOL_UTC_OFFSET}`;
 
 export function vacancyOpen(on = new Date()) {
   return vacancy.active && on < new Date(vacancyClosesAt);
@@ -490,7 +558,7 @@ export function vacancyOpen(on = new Date()) {
  */
 export const careers = {
   title: "Teach at Walnut Academy",
-  intro: `We teach children from Play Group to Class 8 in ${school.locality}, through activity and play rather than by rote.`,
+  intro: `We teach children from ${classRange} in ${school.locality}, through activity and play rather than by rote.`,
   openTo:
     "We are glad to hear from teachers at any time of year, whether or not a post is advertised.",
   sendHeading: "What to send",

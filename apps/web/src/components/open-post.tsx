@@ -2,11 +2,47 @@
 
 import { ArrowDown } from "lucide-react";
 import { useSyncExternalStore } from "react";
-import { vacancy, vacancyOpen } from "@/content/school";
+import { vacancy, vacancyClosesAt, vacancyOpen } from "@/content/school";
 
-/** The closing date holds steady for as long as a visitor has the page open. */
-const subscribe = () => () => {};
+/**
+ * A tab left open crosses the closing date without reloading, and a post that
+ * is still inviting applications after it has closed is the one thing this
+ * page must not do. The store wakes its readers at the moment itself, and
+ * again whenever a tab is brought back, which is when a sleeping timer may
+ * have been held and the moment passed unseen.
+ */
+const subscribe = (notify: () => void) => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
 
+  // A delay beyond the timer's range wraps round and fires at once, so a date
+  // further off than one timer can carry is reached a step at a time. Capped
+  // instead at the longest a timer holds, the moment was only ever waited for
+  // in its last twenty-five days, and a tab opened before that sat through it.
+  const waitForClosing = () => {
+    const remaining = new Date(vacancyClosesAt).getTime() - Date.now();
+    if (remaining <= 0) return;
+    timer = setTimeout(
+      () => {
+        waitForClosing();
+        notify();
+      },
+      Math.min(remaining + 1000, 2 ** 31 - 1),
+    );
+  };
+  waitForClosing();
+
+  const onResume = () => notify();
+  document.addEventListener("visibilitychange", onResume);
+  window.addEventListener("focus", onResume);
+  window.addEventListener("pageshow", onResume);
+
+  return () => {
+    if (timer !== undefined) clearTimeout(timer);
+    document.removeEventListener("visibilitychange", onResume);
+    window.removeEventListener("focus", onResume);
+    window.removeEventListener("pageshow", onResume);
+  };
+};
 const MONTHS = [
   "January",
   "February",
