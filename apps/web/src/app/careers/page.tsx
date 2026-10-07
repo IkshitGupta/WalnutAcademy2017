@@ -71,7 +71,9 @@ const jobPosting = {
   validThrough: vacancyClosesAt,
   employmentType: vacancy.employmentType,
   hiringOrganization: {
-    "@type": "School",
+    // Not the more specific "School": Google rejects subtypes on this field,
+    // which costs the posting its rich result.
+    "@type": "Organization",
     name: school.name,
     sameAs: siteUrl,
   },

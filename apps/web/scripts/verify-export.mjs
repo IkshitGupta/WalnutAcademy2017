@@ -781,6 +781,14 @@ if (vacancy.active) {
       expect(`job posting has ${field}`, Boolean(posting[field]));
     }
 
+    // A subtype here is accepted by the vocabulary but rejected by Google, and
+    // the only symptom is the posting quietly losing its rich result, so the
+    // type is pinned rather than merely required to be present.
+    expect(
+      "the hiring organization is typed as an Organization",
+      posting.hiringOrganization?.["@type"] === "Organization",
+    );
+
     // A day that does not exist, 31 November say, is not rejected: it rolls
     // into the next month and goes on reading as a date everywhere it is
     // compared against itself. Asking the calendar to give the same day back
