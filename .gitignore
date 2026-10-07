@@ -17,6 +17,10 @@ playwright-report/
 test-results/
 blob-report/
 
+# Local state from `wrangler pages dev`, which serves the export the way
+# Cloudflare will
+apps/web/.wrangler/
+
 # Environment
 .env
 .env*.local

@@ -143,5 +143,20 @@ console.log(
   `share.jpg  ${shareInfo.width}x${shareInfo.height}  ${Math.round(shareInfo.size / 1024)} KB`,
 );
 
+/**
+ * A raster of the crest for the structured data, which search engines read for
+ * the knowledge panel. The vector the site itself uses is not interchangeable
+ * here: the documented formats for that property are raster ones.
+ */
+const logoInfo = await sharp(path.join(root, "..", "src", "app", "icon.svg"), {
+  density: 400,
+})
+  .resize({ width: 512 })
+  .png()
+  .toFile(path.join(OUT, "logo.png"));
+console.log(
+  `logo.png   ${logoInfo.width}x${logoInfo.height}  ${Math.round(logoInfo.size / 1024)} KB`,
+);
+
 const written = await readdir(OUT);
 console.log(`\n${written.length} renditions written to public/images`);

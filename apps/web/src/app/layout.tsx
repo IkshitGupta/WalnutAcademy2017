@@ -73,6 +73,8 @@ const structuredData = {
   slogan: school.tagline,
   description,
   url: siteUrl,
+  logo: `${siteUrl}/images/logo.png`,
+  image: `${siteUrl}/images/share.jpg`,
   foundingDate: String(school.established),
   telephone: contact.phoneDisplay,
   email: contact.email,

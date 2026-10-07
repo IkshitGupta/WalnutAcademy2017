@@ -55,6 +55,54 @@ pnpm format
 `pnpm build` writes a static site to `apps/web/out`, deployable to any static
 host. No server or database is required.
 
+### Where it is published
+
+The site is served from Cloudflare Pages. It costs nothing at this size, and
+the free tier does not meter bandwidth, so a busy admissions week cannot
+produce a bill. Azure was the earlier plan and was dropped once it became clear
+the credits that motivated it were never paying for anything: the hosting this
+site needs is free on either, and Cloudflare already holds the DNS, so the
+apex domain needs no record that a registrar might not support.
+
+`main` deploys itself. The `deploy` job in `.github/workflows/ci.yml` waits on
+`verify` and then publishes the artifact that job already built, rather than
+building again: whatever reaches the live site is the exact directory that
+passed lint, typecheck, the export check and the browser tests. It needs two
+repository secrets, `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+
+The deploy uses `cloudflare/wrangler-action`. The older
+`cloudflare/pages-action` is retired and carries an unpatched flaw that can
+expose the tokens the job is holding, so it must not be reintroduced.
+
+`apps/web/public/_headers` carries what a static export cannot set for itself.
+A static host serves files and sends no headers of its own, so the content
+security policy, HSTS and the rest live there. The 404 needs no configuration:
+Pages serves a top-level `404.html` with a real 404 status, and the presence of
+that file is also what stops Pages treating the site as a single-page app and
+answering every unknown address with the homepage.
+
+The policy allows `'unsafe-inline'` for both scripts and styles, which is worth
+stating plainly rather than leaving to be discovered. Next inlines its
+hydration data and Tailwind writes style attributes, and neither can be given a
+nonce without a server to generate one. What the policy still does is confine
+every source to this origin, so nothing third-party can be fetched, and there
+is no form to post to and no untrusted text on the page for an injected script
+to arrive in.
+
+Only `/_next/static` sets a cache lifetime, because those names carry a content
+hash and can be held for a year. Everything else is left to the platform, which
+revalidates against an ETag and clears its edge cache on each deploy, so a
+replaced photograph is visible immediately. Cloudflare advises against custom
+caching on a Pages domain for exactly that reason.
+
+`_redirects` holds one rule, sending `/careers` to `/careers/`, so the address
+without the slash does not fall through to a 404.
+
+Both files are verified against Cloudflare's own runtime rather than by
+inspection: `npx wrangler pages dev apps/web/out` serves the export the way the
+platform will, which is how the redirect, the 404 status, the cache lifetimes
+and the policy were each confirmed.
+
 `pnpm dev` also prints a network address alongside `localhost`, which is how to
 open the site on a phone on the same wifi, which is worth doing since most
 visitors will arrive on one. Next only serves its development resources to
@@ -533,8 +581,12 @@ separate, text-free simplification for the favicon.
   school's address. Gmail's Settings, Forwarding and POP/IMAP, delivers a copy
   of every application anywhere else it is wanted without a second address going
   on a public page.
-- **Register a domain** and replace `siteUrl` in
-  `apps/web/src/content/school.ts`. It is currently a placeholder.
+- **Point the domain at the deployment.** `walnutacademy.in` is registered and
+  `siteUrl` reads it. What remains is outside this repository: create the Pages
+  project, put an API token and the account id in the `CLOUDFLARE_API_TOKEN`
+  and `CLOUDFLARE_ACCOUNT_ID` secrets, move the nameservers to Cloudflare, and
+  add the apex as a custom domain. Until that is done `main` builds but
+  publishes nowhere.
 - **Confirm the exact recognition wording.** The site says "Rajasthan state
   recognition". Match this to the wording printed on the school's own
   recognition certificate if it differs.

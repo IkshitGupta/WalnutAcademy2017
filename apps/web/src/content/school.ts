@@ -81,8 +81,8 @@ export const admissions = {
   session: "2026–27",
 } as const;
 
-/** Placeholder until a domain is registered. Update before going live. */
-export const siteUrl = "https://www.walnutacademy.in";
+/** No trailing slash: every URL built from this appends its own. */
+export const siteUrl = "https://walnutacademy.in";
 
 export const contact = {
   phoneDisplay: "+91 96948 53435",

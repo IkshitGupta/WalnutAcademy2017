@@ -834,14 +834,9 @@ for (const [, canonical] of careersHtml.matchAll(
   );
 }
 
-// Not a failure: the domain is a known pre-launch item, and the build has to
-// go on working before one is registered. Said on every run so it is in front
-// of whoever ships, rather than only in the README.
-if (siteUrl.includes("walnutacademy.in")) {
-  console.warn(
-    `! ${siteUrl} is the placeholder domain. The canonical URL, the share image and the job posting all point at it, so register it before the site goes live.`,
-  );
-}
+// Canonical, sitemap, JSON-LD and the share image all append their own path to
+// this, so a trailing slash doubles the separator and breaks every one of them.
+expect("siteUrl has no trailing slash", !siteUrl.endsWith("/"));
 
 if (failures.length) {
   console.error(`✗ ${failures.length} check(s) failed:`);
