@@ -85,9 +85,16 @@ The policy allows `'unsafe-inline'` for both scripts and styles, which is worth
 stating plainly rather than leaving to be discovered. Next inlines its
 hydration data and Tailwind writes style attributes, and neither can be given a
 nonce without a server to generate one. What the policy still does is confine
-every source to this origin, so nothing third-party can be fetched, and there
-is no form to post to and no untrusted text on the page for an injected script
-to arrive in.
+every source to this origin, bar one, so there is no form to post to and no
+untrusted text on the page for an injected script to arrive in.
+
+That exception is `static.cloudflareinsights.com`, which the platform injects
+into every page to count visits. It is allowed deliberately: the site is of no
+use if nobody can tell whether it reached a parent, and this is the rare
+measurement that sets no cookie, fingerprints nobody and follows nobody between
+sites, so it needs no consent banner. Blocking it is the other defensible
+answer, and the way to take it is to turn the feature off at the zone rather
+than to leave the policy rejecting a script the platform keeps sending.
 
 Only `/_next/static` sets a cache lifetime, because those names carry a content
 hash and can be held for a year. Everything else is left to the platform, which
