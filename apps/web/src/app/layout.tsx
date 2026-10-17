@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Nunito } from "next/font/google";
 import { AnnouncementBar } from "@/components/announcement-bar";
 import { SiteHeader } from "@/components/site-header";
@@ -31,6 +31,11 @@ const shareImage = {
   height: 630,
   alt: `The ${school.name} building in ${school.locality}`,
 };
+
+// Light-only by design. Browsers that darken pages themselves leave the gold
+// and WhatsApp fills alone but lighten the navy text on them (~1.2:1 contrast).
+// `only` is what opts out of forced darkening; `light` on its own does not.
+export const viewport: Viewport = { colorScheme: "only light" };
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
